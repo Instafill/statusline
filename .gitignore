@@ -1,0 +1,20 @@
+node_modules/
+npm-debug.log*
+*.log
+
+# Local secrets — never committed
+.env
+
+# Local Claude Code permission overrides
+.claude/settings.local.json
+
+# Serena project cache, memories and local config
+.serena/
+
+# Runtime state lives in ~/.statusline, never in-tree — but just in case
+.statusline/
+*.tmp
+
+# OS
+Thumbs.db
+.DS_Store

@@ -1,0 +1,16 @@
+{
+  "name": "statusline",
+  "owner": { "name": "Instafill", "url": "https://github.com/Instafill" },
+  "description": "statusline — a local-first observer that turns Claude Code sessions into a record of professional work.",
+  "plugins": [
+    {
+      "name": "statusline",
+      "source": "./",
+      "description": "Observes your Claude Code sessions locally: hooks that record what happened, a watcher that classifies each session through your own claude CLI, a local UI, and the /statusline skill for asking what you worked on.",
+      "version": "0.2.0",
+      "author": { "name": "Instafill" },
+      "homepage": "https://github.com/Instafill/statusline",
+      "license": "MIT"
+    }
+  ]
+}
