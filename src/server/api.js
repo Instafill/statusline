@@ -7,6 +7,7 @@ const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
 const { paths } = require('../paths');
+const { isPluginInstall } = require('../agent-root');
 const config = require('../config');
 const sessions = require('../watcher/sessions');
 const grouping = require('../grouping');
@@ -66,13 +67,21 @@ function createApi({ scheduler, startedAt }) {
 
   routes['GET /api/health'] = () => ({ ok: true, pid: process.pid, started_at: startedAt, app: 'statusline' });
 
-  // The /statusline skill is opt-in and installed by linking a directory, so
+  // The /statusline skill is opt-in for a clone install (link a directory), so
   // the only way to know whether someone has it is to look. Existence only —
   // nothing under ~/.claude is ever read. The UI uses this to offer the
   // one-liner exactly once and then stop asking.
+  //
+  // A plugin install ships the skill inside the plugin, where Claude Code finds
+  // it as /statusline:statusline. Offering the link there would tell a user to
+  // install what they already have, and following it would load the same skill
+  // twice.
   function skillStatus() {
     const source = path.join(__dirname, '..', '..', 'skills', 'statusline');
     const link = path.join(os.homedir(), '.claude', 'skills', 'statusline');
+    if (isPluginInstall()) {
+      return { installed: true, provided_by: 'plugin', source, link: null, command: null, shell: null };
+    }
     let installed = false;
     try {
       installed = fs.existsSync(path.join(link, 'SKILL.md'));

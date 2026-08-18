@@ -104,6 +104,26 @@ test('/api/status advertises the skill with a command that points at this checko
   assert.strictEqual(typeof skill.installed, 'boolean');
 });
 
+test('a plugin install is never told to link the skill it already ships', () => {
+  // Following that offer would load the same skill twice — once namespaced by
+  // the plugin, once personally.
+  const agentRoot = require('../src/agent-root');
+  const original = agentRoot.isPluginInstall;
+  agentRoot.isPluginInstall = () => true;
+  try {
+    delete require.cache[require.resolve('../src/server/api')];
+    const { createApi } = require('../src/server/api');
+    const routes = createApi({ scheduler: { stats: () => ({ queued: [], running: false }) }, startedAt: new Date().toISOString() });
+    const skill = routes['GET /api/status']().skill;
+    assert.strictEqual(skill.installed, true);
+    assert.strictEqual(skill.provided_by, 'plugin');
+    assert.strictEqual(skill.command, null, 'nothing to copy — the plugin carries it');
+  } finally {
+    agentRoot.isPluginInstall = original;
+    delete require.cache[require.resolve('../src/server/api')];
+  }
+});
+
 test('sl.js is dependency-free, like everything else that ships', () => {
   const src = fs.readFileSync(SL, 'utf8');
   const requires = [...src.matchAll(/require\('([^']+)'\)/g)].map((m) => m[1]);
