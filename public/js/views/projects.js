@@ -18,7 +18,7 @@ function capabilityChips(aggregate) {
       );
     }
   }
-  for (const task of aggregate.tasks_top || []) chips.push(`<span class="chip task">${esc(task)}</span>`);
+  for (const l of aggregate.tasks_recent || []) chips.push(`<span class="chip task" title="${esc(when(l.at))}">${esc(l.text)}</span>`);
   for (const ind of aggregate.industries || []) chips.push(`<span class="chip industry">${esc(ind)}</span>`);
   return chips.join('') || '<span class="dim">none yet</span>';
 }

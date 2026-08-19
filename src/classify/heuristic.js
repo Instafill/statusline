@@ -64,8 +64,12 @@ function heuristicClassification(state, { trigger, digest_sha256, reason } = {})
     industry: donorCls ? donorCls.industry || [] : [],
     business_function: donorCls ? donorCls.business_function || [] : [],
     tasks: [],
+    // A deterministic fallback makes no business-level judgments: tasks and
+    // capabilities stay empty (donor copy above deliberately does NOT extend
+    // to business_capabilities).
+    business_capabilities: [],
+    business_capabilities_raw: [],
     technologies,
-    artifacts: [],
     work_stage: 'unknown',
     work_depth: workDepthOf(counts),
     project_hint: donorCls ? donorCls.project_hint || '' : '',

@@ -66,7 +66,8 @@ test('sessions in the same git root group into one project', () => {
   const ts = p.aggregate.technologies.find((t) => t.canonical === 'typescript');
   assert.strictEqual(ts.max_evidence, 'hands_on');
   assert.strictEqual(ts.name, 'TypeScript');
-  assert.ok(p.aggregate.tasks_top.includes('data migration'));
+  // Recent-work lines carry the task text with its session date.
+  assert.ok(p.aggregate.tasks_recent.some((l) => l.text === 'data migration' && l.at));
 });
 
 test('similar project in another directory gets a merge suggestion', () => {

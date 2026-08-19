@@ -133,6 +133,12 @@ export function projectDot(s) {
 // and cloud UIs. Counts are DISTINCT PROJECTS (the anti-inflation contract);
 // this renderer shows raw facts and uncertainty and never invents scores.
 // Unverified hands_on keeps the dashed-"?" convention from session/project chips.
+//
+// Business capabilities are the headline; technologies are a demoted facet.
+// Tier language is load-bearing: a business capability can be GROUNDED (the
+// session activity behind the claim is tool-verified) but never "verified" —
+// that word stays reserved for deterministic tool corroboration of a named
+// technology. The business-level reading is always the classifier's judgment.
 
 function traceLine(p) {
   const name = p.misc ? 'miscellaneous sessions' : p.project_name;
@@ -165,6 +171,62 @@ function capabilityRow(c) {
   </div>`;
 }
 
+function bcapTraceLine(p) {
+  const name = p.misc ? 'miscellaneous sessions' : p.project_name;
+  const flags = [
+    p.grounded_sessions > 0 ? 'grounded' : 'no tool corroboration',
+    p.depth_max,
+    p.classifiers && p.classifiers.some((c) => c !== 'claude-cli') ? `via ${p.classifiers.join('/')}` : null,
+    p.min_confidence != null ? `conf ≥${p.min_confidence}` : null,
+  ].filter(Boolean).join(' · ');
+  return `<div class="small">· <b>${esc(name)}</b> — ${p.sessions} session(s), ${p.grounded_sessions || 0} grounded
+    <span class="dim">(${when(p.first_seen)} → ${when(p.last_seen)}${flags ? ' · ' + esc(flags) : ''})</span></div>`;
+}
+
+function bcapTier(c) {
+  const sessions = (c.projects || []).reduce((n, p) => n + p.sessions, 0);
+  if (sessions === 1) {
+    return { cls: 'prov', label: 'provisional · 1 session', hint: 'a single session backs this — a signal, not yet a claim' };
+  }
+  if (c.grounded_projects > 0) {
+    return { cls: 'grounded', label: 'grounded', hint: 'the session activity behind this claim is tool-verified; the business-level reading is the classifier judgment' };
+  }
+  return { cls: 'claimed', label: 'claimed', hint: 'classifier judgment with no tool-verified activity behind it' };
+}
+
+function bcapRow(c) {
+  const tier = bcapTier(c);
+  const depths = Object.entries(c.depth_projects || {}).filter(([, n]) => n > 0).map(([d, n]) => `${d}×${n}`).join(', ');
+  const uncertain = [
+    c.uncertainty?.any_heuristic ? 'heuristic-classified' : null,
+    c.uncertainty?.any_inherited ? 'inherited' : null,
+  ].filter(Boolean).join(', ');
+  return `<div class="exp-cap">
+    <b>${esc(c.name || c.id)}</b>
+    <span class="cap-badge ${tier.cls}" title="${esc(tier.hint)}">${esc(tier.label)}</span>
+    <span class="small">${c.distinct_projects} project${c.distinct_projects === 1 ? '' : 's'}
+      (${c.grounded_projects} grounded)${depths ? ` · ${esc(depths)}` : ''}
+      · ${when(c.first_used)} → ${when(c.last_used)}
+      ${uncertain ? `<span class="dim">· ${esc(uncertain)}</span>` : ''}</span>
+    <details class="small"><summary class="dim">evidence</summary>${(c.projects || []).map(bcapTraceLine).join('')}</details>
+  </div>`;
+}
+
+function bcapSection(bcaps) {
+  if (!bcaps || !bcaps.length) {
+    return '<span class="dim">none yet — sessions classified against the capability catalog feed this</span>';
+  }
+  const groups = new Map(); // insertion order follows the sorted rows: strongest domain first
+  for (const c of bcaps) {
+    const d = c.domain || 'Other';
+    if (!groups.has(d)) groups.set(d, []);
+    groups.get(d).push(c);
+  }
+  return [...groups.entries()]
+    .map(([d, rows]) => `<div class="exp-domain"><div class="small dim exp-domain-h">${esc(d)}</div>${rows.map(bcapRow).join('')}</div>`)
+    .join('');
+}
+
 export function experienceDoc(doc) {
   const t = doc.totals;
   const excluded = Object.entries(t.excluded || {})
@@ -172,7 +234,7 @@ export function experienceDoc(doc) {
     .map(([k, n]) => `${k.replace('_sessions', '')}×${n}`)
     .join(', ');
   const who = doc.practitioner;
-  const caps = (doc.capabilities || []).map(capabilityRow).join('');
+  const techCaps = (doc.capabilities || []).map(capabilityRow).join('');
   return `<div class="card">
       <div class="proj-head"><h2>${esc(who.display_name || who.id)}
         ${who.provisional ? '<span class="hint" title="machine not yet mapped to a person">provisional</span>' : ''}
@@ -180,8 +242,11 @@ export function experienceDoc(doc) {
       <div class="small dim">${t.projects} project${t.projects === 1 ? '' : 's'} ·
         ${t.sessions} sessions (${t.classified_sessions} classified) ·
         ${when(t.first_seen)} → ${when(t.last_seen)}
+        ${t.industries && t.industries.length ? ` · industries: ${esc(t.industries.join(', '))}` : ''}
         ${excluded ? ` · not counted as experience: ${esc(excluded)}` : ''}</div>
-      <div class="section">${subhead('Demonstrated capabilities')}${caps || '<span class="dim">none yet</span>'}</div>
+      <div class="section">${subhead('Business capabilities')}${bcapSection(doc.business_capabilities)}</div>
+      <div class="section"><details><summary class="dim small">Technologies (facet) — ${(doc.capabilities || []).length} raw rows</summary>
+        ${techCaps || '<span class="dim">none yet</span>'}</details></div>
     </div>`;
 }
 

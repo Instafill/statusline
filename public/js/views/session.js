@@ -80,9 +80,13 @@ function classifiedHtml(s, cls, corr) {
       ['Professional work', cls.professional_work ? 'yes' : 'no'],
       ['Industry', esc((cls.industry || []).join(', '))],
       ['Business function', esc((cls.business_function || []).join(', '))],
-      ['Artifacts', esc((cls.artifacts || []).join(', '))],
       ['Project hint', `${esc(cls.project_hint)} ${cls.continuation ? badge('continuation') : ''}`],
     ])}
+    <div class="section">${subhead('Business capabilities — catalog picks')}${
+      (cls.business_capabilities || [])
+        .map((c) => `<span class="chip bcap" title="${esc(c.domain || '')}">${esc(c.name || c.id)}</span>`)
+        .join('') || '<span class="dim">—</span>'
+    }</div>
     <div class="section">${subhead('Tasks')}${
       (cls.tasks || []).map((t) => `<span class="chip task">${esc(t)}</span>`).join('') || '<span class="dim">—</span>'
     }</div>

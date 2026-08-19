@@ -86,29 +86,53 @@ async function start() {
     });
   }
 
-  // classification.technologies is derived from raw claims + normalization
-  // tables. When the table version changes (server pushed new tables via the
-  // ingest ACK, or a fresh install applies the built-ins), re-derive every
-  // classified session once — history corrects itself with zero LLM calls,
-  // and the uploader's sha check re-uploads exactly what changed.
+  // classification.technologies / .business_capabilities are derived from raw
+  // claims + the normalization tables / capability catalog. When the config
+  // version changes (server pushed an overlay via the ingest ACK, or a fresh
+  // install applies the built-ins), re-derive every classified session once —
+  // history corrects itself with zero LLM calls, and the uploader's sha check
+  // re-uploads exactly what changed. If the overlay carries a NEW
+  // reclassify_capabilities_before watermark, real-LLM sessions classified
+  // before it are marked stale so the existing scheduler re-classifies them
+  // (concurrency 1 — that queue IS the pacing; inherited/heuristic sessions
+  // are skipped: donors re-earn project credit, broken machines ride the
+  // 30-min upgrade path instead).
   function rederiveIfTablesChanged() {
     try {
       const teamConfig = require('../team-config');
       const current = teamConfig.currentVersion();
       if (String(current) === String(teamConfig.appliedVersion())) return;
-      const { deriveTechnologies } = require('../evidence');
+      const { deriveTechnologies, deriveBusinessCapabilities } = require('../evidence');
       const sessionsMod = require('./sessions');
+      const watermark = teamConfig.currentWatermark();
+      const applyWatermark = !!watermark && watermark !== teamConfig.appliedWatermark();
       let updated = 0;
+      let staled = 0;
       for (const s of sessionsMod.listSessions()) {
         if (!s.classification) continue;
         deriveTechnologies(s);
-        sessionsMod.updateSession(s.session_id, { classification: s.classification });
+        deriveBusinessCapabilities(s);
+        const update = { classification: s.classification };
+        if (
+          applyWatermark &&
+          s.classification_state === 'classified' &&
+          (s.classification._meta || {}).classifier === 'claude-cli' &&
+          (s.classified_at || '') < watermark &&
+          ((s.counts || {}).turns || 0) >= 1
+        ) {
+          update.classification_state = 'stale';
+          staled++;
+        }
+        sessionsMod.updateSession(s.session_id, update);
         if (uploader) uploader.markDirty(s.session_id);
         updated++;
       }
       grouping.recompute();
       teamConfig.markApplied();
-      log.info(`normalization tables v${current}: re-derived technologies for ${updated} classified sessions`);
+      log.info(
+        `team config v${current}: re-derived ${updated} classified sessions` +
+          (applyWatermark ? `; marked ${staled} stale for re-classification (watermark ${watermark})` : '')
+      );
     } catch (e) {
       log.error(`table rederive failed: ${e.message}`);
     }

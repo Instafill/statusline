@@ -16,7 +16,10 @@
 //     so several practitioners on one engagement stay ONE org project;
 //   - uncertainty is carried raw (verified tiers, classifier provenance,
 //     min confidence, membership key kind) — a display layer decides what is
-//     safe to claim by filtering, never by recomputation.
+//     safe to claim by filtering, never by recomputation;
+//   - the same reduction runs twice: technologies (the facet) and
+//     business_capabilities (the headline axis, keyed by catalog id, with a
+//     `grounded` tier instead of `verified` — see the bcaps comments).
 //
 // No filesystem, no clock: callers stamp and persist the result themselves.
 const { effectiveClassification, EVIDENCE_WEIGHT } = require('./grouping-core');
@@ -43,6 +46,12 @@ function reduceProject(project, sessionStates, corrections) {
     industries: new Set(),
     depth_max: null,
     techs: {}, // canonical -> {name, max_evidence, verified, verified_max_evidence, sessions, verified_sessions, basis, classifiers, min_confidence, first, last, categories}
+    // catalog id -> {name, domain, sessions, grounded_sessions, classifiers,
+    // min_confidence, first, last, categories}. "grounded" = the session that
+    // claimed the capability contained tool-VERIFIED technology activity: the
+    // underlying work provably happened; the business-level reading of it is
+    // the classifier's judgment. Never conflate with `verified`.
+    bcaps: {},
     classifiers: new Set(),
     min_confidence: null,
     first_seen: null,
@@ -108,6 +117,28 @@ function reduceProject(project, sessionStates, corrections) {
         red.techs[k] = t;
       }
     }
+    const grounded = (cls.technologies || []).some((t) => t.verified);
+    for (const bc of cls.business_capabilities || []) {
+      const b = red.bcaps[bc.id] || {
+        name: bc.name,
+        domain: bc.domain || '',
+        sessions: 0,
+        grounded_sessions: 0,
+        classifiers: new Set(),
+        min_confidence: null,
+        first: null,
+        last: null,
+        categories: new Set(),
+      };
+      b.sessions++;
+      if (grounded) b.grounded_sessions++;
+      b.classifiers.add(via);
+      if (conf !== null && (b.min_confidence === null || conf < b.min_confidence)) b.min_confidence = conf;
+      if (!b.first || s.created_at < b.first) b.first = s.created_at;
+      if (!b.last || s.last_event_at > b.last) b.last = s.last_event_at;
+      b.categories.add(cat);
+      red.bcaps[bc.id] = b;
+    }
   }
   return red.sessions > 0 ? red : null;
 }
@@ -161,6 +192,22 @@ function mergeMisc(reductions) {
       if (!cur.last || (t.last && t.last > cur.last)) cur.last = t.last;
       for (const c of t.categories) cur.categories.add(c);
     }
+    for (const [id, b] of Object.entries(red.bcaps)) {
+      const cur = out.bcaps[id];
+      if (!cur) {
+        out.bcaps[id] = b;
+        continue;
+      }
+      cur.sessions += b.sessions;
+      cur.grounded_sessions += b.grounded_sessions;
+      for (const c of b.classifiers) cur.classifiers.add(c);
+      if (b.min_confidence !== null && (cur.min_confidence === null || b.min_confidence < cur.min_confidence)) {
+        cur.min_confidence = b.min_confidence;
+      }
+      if (!cur.first || (b.first && b.first < cur.first)) cur.first = b.first;
+      if (!cur.last || (b.last && b.last > cur.last)) cur.last = b.last;
+      for (const c of b.categories) cur.categories.add(c);
+    }
   }
   return out;
 }
@@ -209,6 +256,11 @@ function buildDoc(practitioner, perProject, corrections) {
       totals.work_category_projects[cat] = (totals.work_category_projects[cat] || 0) + 1;
     }
   }
+  // Industry is profile-level metadata (whose verticals this person served),
+  // not a per-capability attribute — "HTML — real estate" was noise.
+  const industrySet = new Set();
+  for (const red of entries) for (const i of red.industries) industrySet.add(i);
+  totals.industries = [...industrySet].sort();
 
   // Roll project reductions up per capability — counting PROJECTS.
   const capMap = {};
@@ -225,7 +277,6 @@ function buildDoc(practitioner, perProject, corrections) {
         last_used: null,
         depth_projects: { substantive: 0, shallow: 0, trivial: 0 },
         category_projects: {},
-        industries: new Set(),
         projects: [],
         uncertainty: { any_heuristic: false, any_inherited: false, min_confidence: null },
       };
@@ -242,7 +293,6 @@ function buildDoc(practitioner, perProject, corrections) {
       if (!cap.last_used || (t.last && t.last > cap.last_used)) cap.last_used = t.last;
       if (red.depth_max && red.depth_max in cap.depth_projects) cap.depth_projects[red.depth_max]++;
       for (const cat of t.categories) cap.category_projects[cat] = (cap.category_projects[cat] || 0) + 1;
-      for (const i of red.industries) cap.industries.add(i);
       if (t.classifiers.has('heuristic')) cap.uncertainty.any_heuristic = true;
       if (t.classifiers.has('inherited')) cap.uncertainty.any_inherited = true;
       if (t.min_confidence !== null && (cap.uncertainty.min_confidence === null || t.min_confidence < cap.uncertainty.min_confidence)) {
@@ -271,17 +321,73 @@ function buildDoc(practitioner, perProject, corrections) {
     }
   }
 
-  const capabilities = Object.values(capMap)
-    .map((c) => ({ ...c, industries: [...c.industries] }))
-    .sort(
-      (a, b) =>
-        b.verified_projects - a.verified_projects ||
-        EVIDENCE_WEIGHT[b.max_evidence] - EVIDENCE_WEIGHT[a.max_evidence] ||
-        b.distinct_projects - a.distinct_projects ||
-        (a.canonical < b.canonical ? -1 : 1)
-    );
+  const capabilities = Object.values(capMap).sort(
+    (a, b) =>
+      b.verified_projects - a.verified_projects ||
+      EVIDENCE_WEIGHT[b.max_evidence] - EVIDENCE_WEIGHT[a.max_evidence] ||
+      b.distinct_projects - a.distinct_projects ||
+      (a.canonical < b.canonical ? -1 : 1)
+  );
 
-  return { practitioner, totals, capabilities };
+  // Second axis: business capabilities, same discipline (distinct projects,
+  // misc ≤1, uncertainty raw). `grounded_projects` — never `verified_*` —
+  // counts projects with ≥1 session whose claim sat on tool-verified
+  // technology activity; the business interpretation itself is never
+  // machine-verifiable and no code path may label it "verified".
+  const bcapMap = {};
+  for (const red of entries) {
+    for (const [id, b] of Object.entries(red.bcaps || {})) {
+      const cap = bcapMap[id] || {
+        id,
+        name: b.name,
+        domain: b.domain || '',
+        distinct_projects: 0,
+        grounded_projects: 0,
+        depth_projects: { substantive: 0, shallow: 0, trivial: 0 },
+        category_projects: {},
+        first_used: null,
+        last_used: null,
+        projects: [],
+        uncertainty: { any_heuristic: false, any_inherited: false, min_confidence: null },
+      };
+      cap.distinct_projects++;
+      if (b.grounded_sessions > 0) cap.grounded_projects++;
+      if (!cap.first_used || (b.first && b.first < cap.first_used)) cap.first_used = b.first;
+      if (!cap.last_used || (b.last && b.last > cap.last_used)) cap.last_used = b.last;
+      if (red.depth_max && red.depth_max in cap.depth_projects) cap.depth_projects[red.depth_max]++;
+      for (const cat of b.categories) cap.category_projects[cat] = (cap.category_projects[cat] || 0) + 1;
+      if (b.classifiers.has('heuristic')) cap.uncertainty.any_heuristic = true;
+      if (b.classifiers.has('inherited')) cap.uncertainty.any_inherited = true;
+      if (b.min_confidence !== null && (cap.uncertainty.min_confidence === null || b.min_confidence < cap.uncertainty.min_confidence)) {
+        cap.uncertainty.min_confidence = b.min_confidence;
+      }
+      cap.projects.push({
+        project_id: red.project_id,
+        project_name: red.project_name,
+        key_kind: red.key_kind,
+        engagement_id: red.engagement_id,
+        misc: red.misc,
+        sessions: b.sessions,
+        grounded_sessions: b.grounded_sessions,
+        depth_max: red.depth_max,
+        first_seen: b.first,
+        last_seen: b.last,
+        classifiers: [...b.classifiers],
+        min_confidence: b.min_confidence,
+        session_ids: red.session_ids,
+      });
+      bcapMap[id] = cap;
+    }
+  }
+  const business_capabilities = Object.values(bcapMap).sort(
+    (a, b) =>
+      b.grounded_projects - a.grounded_projects ||
+      b.depth_projects.substantive - a.depth_projects.substantive ||
+      b.distinct_projects - a.distinct_projects ||
+      (a.id < b.id ? -1 : 1)
+  );
+
+  return { practitioner, totals, capabilities, business_capabilities };
 }
 
 // states + groupSessions() output + corrections -> per-practitioner and

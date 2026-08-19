@@ -304,10 +304,15 @@ function foldSession(sid) {
   if (state.classification_state === undefined) state.classification_state = 'unclassified';
   if (state.turns_at_classification === undefined) state.turns_at_classification = 0;
 
-  // classification.technologies is DERIVED: recomputed every fold from the
-  // LLM's raw claims + current tool state + normalization tables, so table
+  // classification.technologies and .business_capabilities are DERIVED:
+  // recomputed every fold from the LLM's raw claims + current tool state +
+  // the normalization tables / capability catalog, so table and catalog
   // updates (team config) correct history without a classifier call.
-  if (state.classification) require('../evidence').deriveTechnologies(state);
+  if (state.classification) {
+    const evidence = require('../evidence');
+    evidence.deriveTechnologies(state);
+    evidence.deriveBusinessCapabilities(state);
+  }
 
   // Staleness: significant new activity after a completed classification.
   if (state.classification_state === 'classified') {

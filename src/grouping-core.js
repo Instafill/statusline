@@ -236,7 +236,7 @@ function groupSessions(states, corrections, opts = WINDOWS_PATH_OPTS) {
       work_category_votes: {},
       technologies: [], // filled from techMap below
       industries: [],
-      tasks_top: [],
+      tasks_recent: [],
       depths: { substantive: 0, shallow: 0, trivial: 0 },
       via: {},
       active_days: 0,
@@ -247,7 +247,7 @@ function groupSessions(states, corrections, opts = WINDOWS_PATH_OPTS) {
       classified_sessions: 0,
     };
     const industrySet = new Set();
-    const taskCounter = {};
+    const taskLines = [];
     const hints = [];
     const techWeights = {};
     const techMap = {}; // canonical -> accumulator
@@ -272,7 +272,7 @@ function groupSessions(states, corrections, opts = WINDOWS_PATH_OPTS) {
       const via = (cls._meta && cls._meta.classifier) || 'unknown';
       agg.via[via] = (agg.via[via] || 0) + 1;
       for (const ind of cls.industry || []) industrySet.add(ind);
-      for (const t of cls.tasks || []) taskCounter[t] = (taskCounter[t] || 0) + 1;
+      for (const t of cls.tasks || []) taskLines.push({ text: t, at: s.last_event_at || s.created_at });
       if (cls.project_hint) hints.push(cls.project_hint);
       for (const tech of cls.technologies || []) {
         // Aggregate by canonical name so display-form variants ("C# / .NET",
@@ -326,10 +326,10 @@ function groupSessions(states, corrections, opts = WINDOWS_PATH_OPTS) {
       }
     }
     agg.industries = [...industrySet];
-    agg.tasks_top = Object.entries(taskCounter)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10)
-      .map(([t]) => t);
+    // "Recent work": the newest task lines with their session dates. Replaces
+    // the old top-by-frequency list — free-text task phrases essentially never
+    // repeat verbatim, so frequency ranking degenerated to ten random phrases.
+    agg.tasks_recent = taskLines.sort((a, b) => String(a.at).localeCompare(String(b.at))).slice(-10);
     agg.active_days = daySet.size;
     agg.machine_ids = [...machineSet];
     agg.technologies = Object.entries(techMap)

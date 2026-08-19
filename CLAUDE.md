@@ -149,6 +149,27 @@ and `.claude-plugin/marketplace.json` together.
   `~/.statusline/team-config.json`; on a version change the watcher re-derives
   every classified session and the uploader's sha check re-uploads exactly what
   changed. Keep the client thin: grow these tables, don't add matching logic.
+- **Business capabilities are catalog picks, not free text
+  (`src/capabilities.js`):** the classifier chooses `business_capabilities`
+  ids from a closed, versioned catalog (repo defaults + the same team-config
+  overlay: `capabilities` / `cap_aliases` sections, charset-capped by
+  `validateOverlay` because glosses render INTO the prompt). The raw-twin
+  contract mirrors technologies exactly: `business_capabilities_raw` is the
+  LLM's untouched picks; the displayed list is DERIVED on every fold
+  (`src/evidence.js deriveBusinessCapabilities`: alias-chase → filter to the
+  current catalog → `{id, name, domain}`), so renames/merges/additions correct
+  all history with zero classifier calls, and unknown ids resurrect when their
+  entry is later added. Zero-turn sessions derive `[]` (raw untouched);
+  heuristic fallbacks emit none (a deterministic fallback makes no business
+  judgments); inherited sessions copy raw and re-derive. An overlay
+  `reclassify_capabilities_before` watermark marks pre-watermark real-LLM
+  sessions `stale` so the ordinary scheduler re-classifies history against a
+  materially new catalog — never automatic, always an operator decision.
+  In experience, capabilities aggregate like technologies (distinct projects,
+  misc ≤1) with one deliberate difference: the tier is **`grounded`**
+  (a contributing session had tool-VERIFIED technology activity), never
+  "verified" — the business-level reading is always the classifier's
+  judgment, and `test/experience-bcaps.test.js` pins the naming discipline.
 - **Git capture (`src/util/gitroot.js`):** per cwd, `gitInfo` yields
   `git_root`, `git_worktree` (linked worktree's name), `git_main_root` (the
   PARENT repo root when in a linked worktree — grouping folds the worktree

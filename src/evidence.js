@@ -12,6 +12,7 @@
 // - only EDITED-file extensions corroborate hands_on; read-only access is
 //   recorded separately (state.tools.extensions_read) and proves nothing.
 const teamConfig = require('./team-config');
+const caps = require('./capabilities');
 
 // Extracts [{token, source}] deterministic evidence from session tool state.
 function collectToolEvidence(state) {
@@ -100,4 +101,43 @@ function deriveTechnologies(state) {
   cls.technologies = mergeEvidence(state, cls.technologies_raw);
 }
 
-module.exports = { collectToolEvidence, matchesToken, mergeEvidence, deriveTechnologies };
+// Business capabilities follow the same raw-twin contract: raw ids from the
+// classifier -> alias-chase -> filter to the CURRENT catalog -> [{id, name,
+// domain}]. Catalog renames/merges/additions therefore correct all history on
+// the next fold with zero classifier calls, and ids the model picked before
+// an entry existed resurrect when it is added. Zero-turn gate: a session with
+// no completed reply performed no business capability (raw stays untouched,
+// so a later turn restores the claims on refold — same reversibility as the
+// zero-tool "discussed" cap for technologies).
+function resolveCapabilities(rawIds, turns) {
+  if (!turns) return [];
+  const tables = teamConfig.capabilities();
+  const out = [];
+  const seen = new Set();
+  for (const id of rawIds || []) {
+    const cur = caps.resolveId(tables, id);
+    if (cur && !seen.has(cur)) {
+      seen.add(cur);
+      out.push(caps.entryOf(tables, cur));
+    }
+  }
+  return out;
+}
+
+function deriveBusinessCapabilities(state) {
+  const cls = state.classification;
+  if (!cls) return;
+  // Legacy classifications (pre-capability) get an empty raw twin — the model
+  // was never asked, so nothing may be fabricated for them.
+  if (!Array.isArray(cls.business_capabilities_raw)) cls.business_capabilities_raw = [];
+  cls.business_capabilities = resolveCapabilities(cls.business_capabilities_raw, (state.counts || {}).turns || 0);
+}
+
+module.exports = {
+  collectToolEvidence,
+  matchesToken,
+  mergeEvidence,
+  deriveTechnologies,
+  resolveCapabilities,
+  deriveBusinessCapabilities,
+};

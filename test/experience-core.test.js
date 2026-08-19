@@ -28,7 +28,7 @@ function mkState({ cwd, gitRoot = null, machine = null, created = '2026-08-01T10
   };
 }
 
-function cls(techs, { category = 'internal_work', professional = true, depth = 'substantive', confidence = 0.8, via = 'claude-cli', industry = [], hint = 'x' } = {}) {
+function cls(techs, { category = 'internal_work', professional = true, depth = 'substantive', confidence = 0.8, via = 'claude-cli', industry = [], hint = 'x', bcaps = [] } = {}) {
   return {
     professional_work: professional,
     work_category: category,
@@ -37,6 +37,7 @@ function cls(techs, { category = 'internal_work', professional = true, depth = '
     industry,
     tasks: [],
     project_hint: hint,
+    business_capabilities: bcaps.map((id) => ({ id, name: id, domain: 'Test domain' })),
     technologies: techs.map(([name, evidence, verified = false]) => ({
       name,
       evidence,

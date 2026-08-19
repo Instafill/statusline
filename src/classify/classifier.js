@@ -16,7 +16,9 @@ const ADAPTERS = {
 // Deterministic evidence lives in src/evidence.js (tables in
 // src/tech-normalize.js, server-overlaid via src/team-config.js); re-exported
 // here so inherit.js/heuristic.js and existing tests keep their import site.
-const { collectToolEvidence, matchesToken, mergeEvidence } = require('../evidence');
+const { collectToolEvidence, matchesToken, mergeEvidence, resolveCapabilities } = require('../evidence');
+const teamConfig = require('../team-config');
+const caps = require('../capabilities');
 
 // A session with zero completed turns performed no work — the model only saw
 // a request. Cap depth/confidence deterministically (variance-proof, where a
@@ -47,12 +49,16 @@ async function classifySession(state, digestText, ctx = {}) {
   let corrective = null;
   let lastError = null;
   let lastOutcome = 'parse_error';
+  // Merged catalog (repo defaults + team overlay) rendered into the prompt;
+  // recorded on _meta so a stored classification names the vocabulary it saw.
+  const capTables = teamConfig.capabilities();
+  const catalogEntries = caps.activeEntries(capTables);
   // Expense across ALL attempts of this classification (retries included), so
   // the session doc carries what the classification actually cost.
   const spent = { cost_usd: 0, input_tokens: 0, output_tokens: 0, any: false };
 
   for (let attemptNo = 1; attemptNo <= 1 + cfg.max_retries; attemptNo++) {
-    const prompt = buildPrompt(digestText, corrective);
+    const prompt = buildPrompt(digestText, corrective, catalogEntries);
     const t0 = Date.now();
     log.info(`classifier egress: session ${state.session_id} attempt ${attemptNo} → ${adapter.kind} (${cfg.model}), ${digestText.length} chars`);
     const res = await adapter.attempt(prompt, cfg);
@@ -69,15 +75,23 @@ async function classifySession(state, digestText, ctx = {}) {
     if (res.outcome === 'ok') {
       const v = validate(res.json);
       if (v.ok) {
-        // technologies_raw is the durable LLM output; technologies is derived
-        // from it here AND on every fold (src/evidence.js), so normalization-
-        // table updates apply retroactively without a classifier call.
+        // technologies_raw / business_capabilities_raw are the durable LLM
+        // output; the display twins are derived from them here AND on every
+        // fold (src/evidence.js), so table/catalog updates apply retroactively
+        // without a classifier call.
         const raw = v.value.technologies.map((t) => ({ name: t.name, evidence: t.evidence }));
-        const value = { ...v.value, technologies_raw: raw, technologies: mergeEvidence(state, raw) };
+        const value = {
+          ...v.value,
+          technologies_raw: raw,
+          technologies: mergeEvidence(state, raw),
+          business_capabilities_raw: v.value.business_capabilities,
+          business_capabilities: resolveCapabilities(v.value.business_capabilities, (state.counts || {}).turns || 0),
+        };
         const capped = applyZeroTurnCaps(state, value);
         classification = {
           ...value,
           _meta: {
+            catalog_version: capTables.version,
             model: cfg.model,
             effort: cfg.effort || null,
             actual_model: res.actual_model || null,

@@ -34,7 +34,7 @@ installed as part of a plugin, the script is at
 | `status` | capture health: hook entries, spool depth, scheduler, repo path, machine id |
 | `sessions [days]` | one line per session active in the last N days (default 14) |
 | `session <sid>` | full detail: counts, classification, technologies with evidence, classifier cost |
-| `experience` | capabilities by distinct project, with verification and exclusions |
+| `experience` | business capabilities (catalog) + technology facet, by distinct project |
 | `projects` | project grouping, engagement ids, merge suggestions |
 | `egress [n]` | recent network attempts — classifier calls and uploads |
 | `repo` | path to the statusline checkout on this machine |
@@ -111,13 +111,20 @@ project. Sessions whose state is not `classified` have no work description yet;
 the helper counts them at the bottom — say so rather than quietly dropping
 them.
 
-**"What can I claim I know?"** — `sl.js experience`. Report
+**"What can I claim I know?"** — `sl.js experience`. Lead with the
+**business capabilities** (what problems this person solves, from a fixed
+catalog); technologies are the supporting facet, not the answer. Report
 **distinct projects, not sessions**: the model deliberately reduces within a
-project first, so session volume can never inflate a capability. A row with 0
-verified projects is a claim the LLM made that no tool evidence corroborates —
-the helper marks those `← unverified`, and you should repeat that qualifier
-rather than smoothing it over. `excluded` counts learning/personal/unclassified
-work that earned no credit.
+project first, so session volume can never inflate a capability.
+
+Repeat the qualifiers the helper prints rather than smoothing them over:
+`← unverified` on a technology means the LLM claimed hands-on and no tool
+evidence corroborates it; on a business capability, **`grounded` means the
+session activity behind the claim is tool-verified — never say a business
+capability is "verified"**, because the business-level reading is always the
+classifier's judgment. `← claimed` means not even that much, and
+`← provisional (1 session)` means a single session backs the whole row.
+`excluded` counts learning/personal/unclassified work that earned no credit.
 
 **"Why isn't this session classified?"** — `sl.js session <sid>` for the state,
 `sl.js status` for the scheduler. Classification fires on a 60s idle tick after

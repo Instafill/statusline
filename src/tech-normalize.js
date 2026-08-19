@@ -135,6 +135,18 @@ const KEY_RE = /^[a-z0-9.@_-]{1,64}$/;
 const VAL_RE = /^[a-z0-9-]{1,64}$/;
 const EXT_RE = /^\.[a-z0-9]{1,10}$/;
 
+// Capability-catalog sections (consumed by src/capabilities.js, distributed
+// on the same overlay). Names/glosses/domains RENDER INTO THE CLASSIFIER
+// PROMPT, so their charsets deliberately exclude anything that could break
+// out of list position: no newlines, no <>, no backticks, no braces.
+const CAP_ID_RE = /^[a-z0-9-]{2,48}$/;
+const CAP_NAME_RE = /^[A-Za-z0-9&/+.,()' -]{1,48}$/;
+const CAP_GLOSS_RE = /^[A-Za-z0-9&/+.,;:()'" -]{1,140}$/;
+const CAP_DOMAIN_RE = /^[A-Za-z0-9&/+.,()' -]{1,32}$/;
+const MAX_CAP_ENTRIES = 500;
+const MAX_CAP_ALIASES = 1000;
+const WATERMARK_RE = /^[0-9T:.Z-]{1,32}$/;
+
 function validateOverlay(obj) {
   const errors = [];
   if (!obj || typeof obj !== 'object' || Array.isArray(obj)) {
@@ -147,10 +159,11 @@ function validateOverlay(obj) {
   if (version === null) errors.push('version missing or invalid');
 
   const value = { version };
-  for (const [section, keyRe] of [
-    ['aliases', KEY_RE],
-    ['ext_tech', EXT_RE],
-    ['cmd_tech', KEY_RE],
+  for (const [section, keyRe, valRe, maxEntries] of [
+    ['aliases', KEY_RE, VAL_RE, MAX_ENTRIES],
+    ['ext_tech', EXT_RE, VAL_RE, MAX_ENTRIES],
+    ['cmd_tech', KEY_RE, VAL_RE, MAX_ENTRIES],
+    ['cap_aliases', CAP_ID_RE, CAP_ID_RE, MAX_CAP_ALIASES],
   ]) {
     const src = obj[section];
     if (src === undefined) continue;
@@ -159,17 +172,60 @@ function validateOverlay(obj) {
       continue;
     }
     const entries = Object.entries(src);
-    if (entries.length > MAX_ENTRIES) {
-      errors.push(`${section} exceeds ${MAX_ENTRIES} entries`);
+    if (entries.length > maxEntries) {
+      errors.push(`${section} exceeds ${maxEntries} entries`);
       continue;
     }
     const clean = {};
     for (const [k, v] of entries) {
-      if (keyRe.test(k) && typeof v === 'string' && VAL_RE.test(v)) clean[k] = v;
+      if (keyRe.test(k) && typeof v === 'string' && valRe.test(v)) clean[k] = v;
       else errors.push(`${section}: dropped invalid entry ${JSON.stringify(k)}`);
     }
     value[section] = clean;
   }
+
+  // capabilities: { id -> {name, gloss?, domain?} } — object values, so it
+  // gets its own pass with per-field charset caps (see CAP_* above).
+  if (obj.capabilities !== undefined) {
+    const src = obj.capabilities;
+    if (!src || typeof src !== 'object' || Array.isArray(src)) {
+      errors.push('capabilities is not an object');
+    } else if (Object.keys(src).length > MAX_CAP_ENTRIES) {
+      errors.push(`capabilities exceeds ${MAX_CAP_ENTRIES} entries`);
+    } else {
+      const clean = {};
+      for (const [id, e] of Object.entries(src)) {
+        const ok =
+          CAP_ID_RE.test(id) &&
+          e && typeof e === 'object' && !Array.isArray(e) &&
+          typeof e.name === 'string' && CAP_NAME_RE.test(e.name) &&
+          (e.gloss === undefined || (typeof e.gloss === 'string' && CAP_GLOSS_RE.test(e.gloss))) &&
+          (e.domain === undefined || (typeof e.domain === 'string' && CAP_DOMAIN_RE.test(e.domain)));
+        if (ok) {
+          clean[id] = {
+            name: e.name,
+            ...(e.gloss !== undefined ? { gloss: e.gloss } : {}),
+            ...(e.domain !== undefined ? { domain: e.domain } : {}),
+          };
+        } else {
+          errors.push(`capabilities: dropped invalid entry ${JSON.stringify(id)}`);
+        }
+      }
+      value.capabilities = clean;
+    }
+  }
+
+  // Optional operator watermark: sessions classified before this instant
+  // become eligible for re-classification (see watcher rederive sweep).
+  if (obj.reclassify_capabilities_before !== undefined) {
+    const w = obj.reclassify_capabilities_before;
+    if (typeof w === 'string' && WATERMARK_RE.test(w) && !Number.isNaN(Date.parse(w))) {
+      value.reclassify_capabilities_before = w;
+    } else {
+      errors.push('reclassify_capabilities_before invalid (ISO-8601 string required)');
+    }
+  }
+
   return { ok: version !== null, errors, value: version !== null ? value : null };
 }
 

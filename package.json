@@ -1,6 +1,6 @@
 {
   "name": "statusline",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "private": true,
   "description": "Claude Code Capability Watcher - local-only session observer and professional-work classifier (Windows + macOS)",
   "license": "MIT",

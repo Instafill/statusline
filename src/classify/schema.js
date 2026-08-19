@@ -74,8 +74,11 @@ function validate(obj) {
     industry: asStringArray(obj.industry),
     business_function: asStringArray(obj.business_function),
     tasks: asStringArray(obj.tasks),
+    // Deliberately catalog-agnostic: unknown ids survive into the raw twin so
+    // a later catalog addition picks them up retroactively (deriveBusiness-
+    // Capabilities filters against the CURRENT catalog on every fold).
+    business_capabilities: [...new Set(asStringArray(obj.business_capabilities).map((s) => s.toLowerCase()))].slice(0, 8),
     technologies,
-    artifacts: asStringArray(obj.artifacts),
     work_stage: asEnum(obj.work_stage, WORK_STAGES, 'unknown', errors, 'work_stage'),
     work_depth: asEnum(obj.work_depth, WORK_DEPTHS, 'shallow', errors, 'work_depth'),
     project_hint: asString(obj.project_hint, '').slice(0, 100),

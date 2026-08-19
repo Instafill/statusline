@@ -11,8 +11,9 @@ const fs = require('fs');
 const { paths } = require('./paths');
 const { readJson, writeJsonAtomic } = require('./util/jsonfile');
 const { DEFAULTS, createNormalizer, mergeTables, validateOverlay } = require('./tech-normalize');
+const caps = require('./capabilities');
 
-let cache = null; // { mtimeMs, normalizer }
+let cache = null; // { mtimeMs, normalizer, capabilities, watermark }
 
 function fileMtime() {
   try {
@@ -22,16 +23,36 @@ function fileMtime() {
   }
 }
 
-function normalizer() {
+function load() {
   const mtimeMs = fileMtime();
-  if (cache && cache.mtimeMs === mtimeMs) return cache.normalizer;
-  let tables = DEFAULTS;
+  if (cache && cache.mtimeMs === mtimeMs) return cache;
+  let overlay = null;
   if (mtimeMs) {
     const v = validateOverlay(readJson(paths.teamConfig, null));
-    if (v.ok) tables = mergeTables(DEFAULTS, v.value);
+    if (v.ok) overlay = v.value;
   }
-  cache = { mtimeMs, normalizer: createNormalizer(tables) };
-  return cache.normalizer;
+  cache = {
+    mtimeMs,
+    normalizer: createNormalizer(overlay ? mergeTables(DEFAULTS, overlay) : DEFAULTS),
+    capabilities: caps.mergeCatalog(caps.DEFAULTS, overlay),
+    watermark: (overlay && overlay.reclassify_capabilities_before) || null,
+  };
+  return cache;
+}
+
+function normalizer() {
+  return load().normalizer;
+}
+
+// Merged business-capability catalog (repo defaults + overlay), same
+// version/caching semantics as the normalizer.
+function capabilities() {
+  return load().capabilities;
+}
+
+// Overlay-declared re-classification watermark (null when absent).
+function currentWatermark() {
+  return load().watermark;
 }
 
 function currentVersion() {
@@ -55,8 +76,28 @@ function appliedVersion() {
   return m && m.version !== undefined ? m.version : null;
 }
 
-function markApplied() {
-  writeJsonAtomic(paths.teamConfigApplied, { version: currentVersion(), applied_at: new Date().toISOString() });
+// The last reclassify watermark the sweep acted on — each watermark VALUE is
+// applied exactly once, independent of version churn around it.
+function appliedWatermark() {
+  const m = readJson(paths.teamConfigApplied, null);
+  return (m && m.reclassify_watermark) || null;
 }
 
-module.exports = { normalizer, currentVersion, store, appliedVersion, markApplied };
+function markApplied() {
+  writeJsonAtomic(paths.teamConfigApplied, {
+    version: currentVersion(),
+    applied_at: new Date().toISOString(),
+    ...(currentWatermark() ? { reclassify_watermark: currentWatermark() } : {}),
+  });
+}
+
+module.exports = {
+  normalizer,
+  capabilities,
+  currentVersion,
+  currentWatermark,
+  store,
+  appliedVersion,
+  appliedWatermark,
+  markApplied,
+};

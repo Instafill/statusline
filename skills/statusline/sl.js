@@ -128,8 +128,30 @@ const commands = {
     if (!p) return console.log('no experience computed yet');
     const t = p.totals;
     console.log(`${t.projects} project(s), ${t.classified_sessions}/${t.sessions} sessions classified, ${day(t.first_seen)} → ${day(t.last_seen)}`);
-    console.log(`excluded: ${JSON.stringify(t.excluded)}  (earns no capability credit)\n`);
-    console.log(`${pad('CAPABILITY', 22)} ${pad('PROJECTS', 8)} ${pad('VERIFIED', 8)} ${pad('EVIDENCE', 12)} FIRST → LAST`);
+    console.log(`excluded: ${JSON.stringify(t.excluded)}  (earns no capability credit)`);
+    if (t.industries && t.industries.length) console.log(`industries: ${t.industries.join(', ')}`);
+
+    // The headline axis: business capabilities (catalog picks). "grounded" =
+    // the session activity behind the claim is tool-verified; the business
+    // reading is the classifier's judgment, so it is never called "verified".
+    const bcaps = p.business_capabilities || [];
+    console.log(`\nBUSINESS CAPABILITIES — what problems this work solves`);
+    if (!bcaps.length) {
+      console.log('  none yet (sessions classified by client <0.3.0 carry no catalog picks)');
+    } else {
+      console.log(`${pad('CAPABILITY', 42)} ${pad('PROJECTS', 8)} ${pad('GROUNDED', 8)} FIRST → LAST`);
+      for (const c of bcaps) {
+        const sessions = (c.projects || []).reduce((n, x) => n + x.sessions, 0);
+        const warn =
+          sessions === 1 ? '  ← provisional (1 session)'
+          : c.grounded_projects === 0 ? '  ← claimed, no tool corroboration'
+          : c.uncertainty && c.uncertainty.any_heuristic ? '  ← heuristic' : '';
+        console.log(`${pad(c.name, 42)} ${pad(c.distinct_projects, 8)} ${pad(c.grounded_projects, 8)} ${day(c.first_used)} → ${day(c.last_used)}${warn}`);
+      }
+    }
+
+    console.log(`\nTECHNOLOGIES (supporting facet)`);
+    console.log(`${pad('TECHNOLOGY', 22)} ${pad('PROJECTS', 8)} ${pad('VERIFIED', 8)} ${pad('EVIDENCE', 12)} FIRST → LAST`);
     for (const c of p.capabilities) {
       const warn = c.verified_projects === 0 ? '  ← unverified' : c.uncertainty && c.uncertainty.any_heuristic ? '  ← heuristic' : '';
       console.log(`${pad(c.name, 22)} ${pad(c.distinct_projects, 8)} ${pad(c.verified_projects, 8)} ${pad(c.max_evidence, 12)} ${day(c.first_used)} → ${day(c.last_used)}${warn}`);
