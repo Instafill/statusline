@@ -28,6 +28,16 @@ async function main() {
   switch (cmd) {
     case 'install': {
       const installer = require('./installer');
+      // Claude Code registers a plugin's hooks from its own manifest. Writing
+      // settings.json entries on top would run hook-forward TWICE per event —
+      // every count in the data silently doubles — so refuse rather than warn.
+      if (require('./agent-root').isPluginInstall()) {
+        console.log('This is a plugin install: Claude Code already registers the hooks from');
+        console.log('hooks/hooks.json, and settings.json is deliberately left alone.');
+        console.log('Installing here would double-capture every event. Nothing was changed.');
+        console.log('Run "node src/cli.js doctor" to check capture health instead.');
+        break;
+      }
       const res = installer.install();
       console.log(`Installed ${res.added.length} hook entr${res.added.length === 1 ? 'y' : 'ies'} (${res.skipped.length} already present) in ${res.settingsPath}`);
       if (res.repointed.length) {
@@ -52,12 +62,21 @@ async function main() {
       const fs = require('fs');
       const http = require('http');
       const config = require('./config');
+      const { isPluginInstall } = require('./agent-root');
       const st = installer.status();
+      const viaPlugin = isPluginInstall();
       console.log(`Data dir:      ${paths.home}`);
       console.log(`Settings file: ${st.settingsPath}${st.parseError ? ` (PARSE ERROR: ${st.parseError})` : ''}`);
-      console.log(`Hooks:         ${st.fullyInstalled ? 'installed' : 'NOT (fully) installed'}`);
-      for (const e of st.entries) console.log(`  - ${e.event}${e.matcher ? ` [${e.matcher}]` : ''}: ${e.installed ? 'ok' : 'missing'}`);
-      if (st.drift) console.log(`Install drift: ${st.drift} — re-run "node src/cli.js install"`);
+      // A plugin install registers hooks from its own manifest and must NEVER
+      // be told to run `install` — that would ADD settings.json entries on top
+      // of the plugin's, double-capturing every event (doctor.js:67 same rule).
+      if (viaPlugin) {
+        console.log('Hooks:         from the plugin manifest (settings.json is not modified)');
+      } else {
+        console.log(`Hooks:         ${st.fullyInstalled ? 'installed' : 'NOT (fully) installed'}`);
+        for (const e of st.entries) console.log(`  - ${e.event}${e.matcher ? ` [${e.matcher}]` : ''}: ${e.installed ? 'ok' : 'missing'}`);
+        if (st.drift) console.log(`Install drift: ${st.drift} — re-run "node src/cli.js install"`);
+      }
       let spoolDepth = 0;
       let sessionCount = 0;
       try {
