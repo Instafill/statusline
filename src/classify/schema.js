@@ -77,7 +77,7 @@ function validate(obj) {
     // Deliberately catalog-agnostic: unknown ids survive into the raw twin so
     // a later catalog addition picks them up retroactively (deriveBusiness-
     // Capabilities filters against the CURRENT catalog on every fold).
-    business_capabilities: [...new Set(asStringArray(obj.business_capabilities).map((s) => s.toLowerCase()))].slice(0, 8),
+    business_capabilities: [...new Set(asStringArray(obj.business_capabilities).map((s) => s.toLowerCase()))].slice(0, 4),
     technologies,
     work_stage: asEnum(obj.work_stage, WORK_STAGES, 'unknown', errors, 'work_stage'),
     work_depth: asEnum(obj.work_depth, WORK_DEPTHS, 'shallow', errors, 'work_depth'),

@@ -109,7 +109,7 @@ function deriveTechnologies(state) {
 // no completed reply performed no business capability (raw stays untouched,
 // so a later turn restores the claims on refold — same reversibility as the
 // zero-tool "discussed" cap for technologies).
-function resolveCapabilities(rawIds, turns) {
+function resolveCapabilities(rawIds, turns, dropped) {
   if (!turns) return [];
   const tables = teamConfig.capabilities();
   const out = [];
@@ -119,6 +119,12 @@ function resolveCapabilities(rawIds, turns) {
     if (cur && !seen.has(cur)) {
       seen.add(cur);
       out.push(caps.entryOf(tables, cur));
+    } else if (!cur && dropped && caps.ID_RE.test(String(id)) && !dropped.includes(id)) {
+      // The model asked for an id the current catalog cannot express — the
+      // catalog-gap sensor. Only well-formed ids are recorded (free-form model
+      // junk is noise, not signal), and the list rides the session doc so the
+      // fleet view can tally it per machine.
+      dropped.push(id);
     }
   }
   return out;
@@ -130,7 +136,11 @@ function deriveBusinessCapabilities(state) {
   // Legacy classifications (pre-capability) get an empty raw twin — the model
   // was never asked, so nothing may be fabricated for them.
   if (!Array.isArray(cls.business_capabilities_raw)) cls.business_capabilities_raw = [];
-  cls.business_capabilities = resolveCapabilities(cls.business_capabilities_raw, (state.counts || {}).turns || 0);
+  const dropped = [];
+  cls.business_capabilities = resolveCapabilities(cls.business_capabilities_raw, (state.counts || {}).turns || 0, dropped);
+  // DERIVED like the list itself: recomputed on every fold, so adding the
+  // missing catalog entry later empties this and fills business_capabilities.
+  cls.business_capabilities_dropped = dropped;
 }
 
 module.exports = {

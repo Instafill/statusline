@@ -158,3 +158,52 @@ test('stripContent preserves both capability fields (a strip regression would si
   assert.deepStrictEqual(out.classification.business_capabilities_raw, ['process-automation']);
   assert.strictEqual(out.classification.business_capabilities[0].id, 'process-automation');
 });
+
+/* --------------------------- catalog-gap telemetry ------------------------- */
+
+test('unresolved ids are recorded in business_capabilities_dropped and clear when the catalog catches up', () => {
+  const s = mkState({
+    classification: { business_capabilities_raw: ['wiki-editorial-work', 'process-automation', 'Bad Id!', 'wiki-editorial-work'] },
+  });
+  deriveBusinessCapabilities(s);
+  assert.deepStrictEqual(s.classification.business_capabilities_dropped, ['wiki-editorial-work'], 'well-formed unknown ids only, deduped; malformed junk excluded');
+  assert.strictEqual(s.classification.business_capabilities[0].id, 'process-automation');
+  teamConfig.store({
+    version: 9,
+    capabilities: { 'wiki-editorial-work': { name: 'Wiki Editorial Work', domain: 'Test' } },
+  });
+  deriveBusinessCapabilities(s);
+  assert.deepStrictEqual(s.classification.business_capabilities_dropped, [], 'catalog addition empties the gap sensor on refold');
+  assert.ok(s.classification.business_capabilities.some((c) => c.id === 'wiki-editorial-work'));
+});
+
+test('zero-turn sessions record no dropped ids (nothing was performed)', () => {
+  const s = mkState({
+    counts: { prompts: 1, turns: 0, tool_uses: 0, subagent_events: 0, events: 1 },
+    classification: { business_capabilities_raw: ['some-unknown-thing'] },
+  });
+  deriveBusinessCapabilities(s);
+  assert.deepStrictEqual(s.classification.business_capabilities_dropped, []);
+});
+
+test('stripContent preserves business_capabilities_dropped (the fleet catalog-gap tally reads it)', () => {
+  const doc = {
+    session_id: 'x',
+    prompts: [{ text: 'secret' }],
+    classification: { business_capabilities_dropped: ['wiki-editorial-work'] },
+  };
+  const out = stripContent(doc);
+  assert.deepStrictEqual(out.classification.business_capabilities_dropped, ['wiki-editorial-work']);
+});
+
+test('schema caps business_capabilities at 4 — matching the prompt instruction', () => {
+  const { validate } = require('../src/classify/schema');
+  const v = validate({
+    professional_work: true,
+    confidence: 0.9,
+    technologies: [],
+    business_capabilities: ['a-1', 'b-2', 'c-3', 'd-4', 'e-5', 'f-6'],
+  });
+  assert.strictEqual(v.ok, true);
+  assert.strictEqual(v.value.business_capabilities.length, 4);
+});

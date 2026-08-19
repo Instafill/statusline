@@ -222,6 +222,12 @@ function buildDoc(practitioner, perProject, corrections) {
     last_seen: null,
     work_category_projects: {},
     excluded: { learning: 0, personal: 0, unclassified: 0, misc_sessions: 0 },
+    // Catalog coverage (EXPERIENCE-V2 §6: healthy ≥80%): of the professional
+    // sessions whose classifier could have picked capabilities (real or
+    // inherited — the heuristic makes no business judgments by design), how
+    // many landed at least one catalog id. A falling ratio means the catalog
+    // is missing entries for work the team actually does.
+    capability_coverage: { eligible: 0, covered: 0 },
   };
   const realReductions = [];
   const miscReductions = [];
@@ -241,6 +247,11 @@ function buildDoc(practitioner, perProject, corrections) {
       const cat = corr.label && corr.label !== 'ignore' ? corr.label : cls.work_category;
       if (cat === 'learning') totals.excluded.learning++;
       if (cat === 'personal') totals.excluded.personal++;
+      const via = (cls._meta && cls._meta.classifier) || null;
+      if (PROFESSIONAL_CATS.has(cat) && via && via !== 'heuristic') {
+        totals.capability_coverage.eligible++;
+        if ((cls.business_capabilities || []).length > 0) totals.capability_coverage.covered++;
+      }
     }
     const red = reduceProject(project, sessions, corrections);
     if (!red) continue;

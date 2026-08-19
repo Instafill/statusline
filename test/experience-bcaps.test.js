@@ -130,3 +130,16 @@ test('industries live on totals, never on capability rows', () => {
   assert.strictEqual('industries' in doc.capabilities.find((c) => c.canonical === 'python'), false);
   assert.strictEqual('industries' in bcap(doc, 'lead-generation'), false);
 });
+
+test('capability_coverage counts capability-eligible professional sessions; heuristic and non-professional excluded', () => {
+  const states = [
+    mkState({ cwd: 'C:\p\a', gitRoot: 'C:\p\a', cls: cls({ bcaps: ['process-automation'] }) }), // covered
+    mkState({ cwd: 'C:\p\a', gitRoot: 'C:\p\a', cls: cls({ bcaps: [] }) }), // eligible, uncovered
+    mkState({ cwd: 'C:\p\a', gitRoot: 'C:\p\a', cls: cls({ via: 'heuristic', bcaps: [] }) }), // heuristic: not eligible
+    mkState({ cwd: 'C:\p\a', gitRoot: 'C:\p\a', cls: cls({ category: 'learning', bcaps: [] }) }), // not professional
+    mkState({ cwd: 'C:\p\a', gitRoot: 'C:\p\a', cls: cls({ via: 'inherited', bcaps: ['process-automation'] }) }), // inherited counts
+  ];
+  const { practitioners } = experience(states);
+  const cov = practitioners[0].totals.capability_coverage;
+  assert.deepStrictEqual(cov, { eligible: 3, covered: 2 });
+});

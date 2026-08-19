@@ -12,6 +12,7 @@ const { paths } = require('./paths');
 const { readJson, writeJsonAtomic } = require('./util/jsonfile');
 const { DEFAULTS, createNormalizer, mergeTables, validateOverlay } = require('./tech-normalize');
 const caps = require('./capabilities');
+const log = require('./util/log');
 
 let cache = null; // { mtimeMs, normalizer, capabilities, watermark }
 
@@ -30,6 +31,11 @@ function load() {
   if (mtimeMs) {
     const v = validateOverlay(readJson(paths.teamConfig, null));
     if (v.ok) overlay = v.value;
+    // Degrading to defaults is the safe behavior, but doing it silently wipes
+    // every org-specific capability from this machine's history on the next
+    // fold — say so, once per file change (the mtime cache gates re-logging).
+    if (!v.ok) log.warn(`team-config.json invalid (${v.errors[0] || 'unreadable'}) — running on repo defaults`);
+    else if (v.errors.length) log.warn(`team-config.json partially invalid: ${v.errors.slice(0, 3).join('; ')}`);
   }
   cache = {
     mtimeMs,
