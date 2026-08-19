@@ -14,6 +14,7 @@ const egress = require('../classify/egress');
 const { liveness, classificationOutlook } = require('../session-view');
 const { readJson, writeJsonAtomic } = require('../util/jsonfile');
 const { machineIdentity } = require('./identity');
+const skills = require('../skill-status');
 const { ingestUrl, endpointHost } = require('./endpoints');
 const teamConfig = require('../team-config');
 const log = require('../util/log');
@@ -108,6 +109,9 @@ function createUploader({ getSchedulerStats, startedAt, onTeamConfig }) {
       v: 1,
       machine: machineIdentity(),
       watcher: watcherStats(),
+      // Whether the /statusline skill on this machine is the one this client
+      // ships. Five flags, no paths — see skill-status.js forUpload().
+      skill: skills.forUpload(),
       // Lets the server skip resending normalization tables we already have.
       config_version: teamConfig.currentVersion(),
       sessions: sessionDocs,

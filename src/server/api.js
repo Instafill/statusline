@@ -7,7 +7,8 @@ const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
 const { paths } = require('../paths');
-const { isPluginInstall } = require('../agent-root');
+const agentRoot = require('../agent-root');
+const skills = require('../skill-status');
 const config = require('../config');
 const sessions = require('../watcher/sessions');
 const grouping = require('../grouping');
@@ -76,23 +77,23 @@ function createApi({ scheduler, startedAt }) {
   // it as /statusline:statusline. Offering the link there would tell a user to
   // install what they already have, and following it would load the same skill
   // twice.
+  //
+  // src/skill-status.js does the looking, because the uploader reports the same
+  // verdict to a team deployment. The paths and the copyable command are built
+  // here and stay here — they name the user's home directory, so they are not
+  // something we upload.
   function skillStatus() {
-    const source = path.join(__dirname, '..', '..', 'skills', 'statusline');
-    const link = path.join(os.homedir(), '.claude', 'skills', 'statusline');
-    if (isPluginInstall()) {
-      return { installed: true, provided_by: 'plugin', source, link: null, command: null, shell: null };
-    }
-    let installed = false;
-    try {
-      installed = fs.existsSync(path.join(link, 'SKILL.md'));
-    } catch (e) {
-      /* treat an unreadable path as not installed */
+    const state = skills.detect();
+    const source = skills.shippedDir(agentRoot.AGENT_ROOT);
+    const link = skills.personalDir(os.homedir());
+    if (state.via === 'plugin') {
+      return { ...state, installed: true, provided_by: 'plugin', source, link: null, command: null, shell: null };
     }
     const command =
       process.platform === 'win32'
         ? `New-Item -ItemType Directory -Force "$env:USERPROFILE\\.claude\\skills" > $null; New-Item -ItemType Junction -Path "$env:USERPROFILE\\.claude\\skills\\statusline" -Target "${source}"`
         : `mkdir -p ~/.claude/skills && ln -s "${source}" ~/.claude/skills/statusline`;
-    return { installed, source, link, command, shell: process.platform === 'win32' ? 'PowerShell' : 'shell' };
+    return { ...state, source, link, command, shell: process.platform === 'win32' ? 'PowerShell' : 'shell' };
   }
 
   routes['GET /api/status'] = () => {

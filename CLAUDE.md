@@ -215,6 +215,19 @@ and `.claude-plugin/marketplace.json` together.
   path or JSON mangles silently in exactly the environment we run in.
   `test/skill.test.js` guards the frontmatter, the subcommand list and that
   rule, because a malformed skill does not error — it just never loads.
+  **Which skill is actually loaded is a separate question from which client
+  runs**, and `src/skill-status.js` answers it: it fingerprints the skill Claude
+  Code would load (`SKILL.md` + `sl.js`) against the one this copy ships and
+  reports `{installed, via, sha, matches_agent, shadowed}` — `via` being
+  `plugin|linked|copied|none`. This is a *consistency* check, not a freshness
+  one — a plugin's skill always matches its plugin and a link always matches its
+  checkout, so whether that client is current is what `app_version` already
+  answers. A **copy** matches neither: it froze at the moment it was made while
+  the client kept moving. `shadowed` is a plugin install with a leftover
+  personal copy from an older clone, which Claude Code can load instead.
+  The local API adds absolute paths and the copyable link command for the UI;
+  `forUpload()` is the ONLY shape that crosses the network and is built field by
+  field, because those paths name the user's home directory (rule 2).
 - **Attention beep lives in its own repo**
   ([ogamaniuk/statusline-beep](https://github.com/ogamaniuk/statusline-beep),
   off by default) — not in this one. It has no dependency on statusline beyond
@@ -290,6 +303,8 @@ skills/statusline/        the `/statusline` skill: SKILL.md + sl.js (read-only)
 src/cli.js                command dispatch
 src/paths.js              data-dir layout, legacy migration, sanitized session paths
 src/agent-root.js         records where the agent lives + the autostart launcher
+src/skill-status.js       which /statusline skill this machine loads, and whether
+                          it is the one this copy ships (upload projection: no paths)
 src/config.js             DEFAULTS + ~/.statusline/config.json overlay (deep merge)
 src/installer.js          settings.json backup/merge/verify/uninstall (highest blast radius)
 src/watcher/              index (lock, drain loop, recovery), spool, sessions (fold),

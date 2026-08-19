@@ -69,8 +69,14 @@ In any Claude Code session:
 
 The repo is public, so this needs no GitHub account, no `gh` CLI and no
 credentials — Claude Code clones it over plain HTTPS. Claude Code registers the
-hooks itself, so `~/.claude/settings.json` is never modified by us, and
-`/plugin update` is the whole update story.
+hooks itself, so `~/.claude/settings.json` is never modified by us.
+
+Updates are **not** automatic: Claude Code ships auto-update ON for its own
+marketplaces and OFF for third-party ones like this repo, so a new release
+reaches nobody until they ask for it (silently — there is no "a newer version
+exists" notice). Either turn it on once, in `/plugin` → **Marketplaces** →
+`statusline` → *enable auto-update*, or update by hand when a release lands —
+see [Updating](#updating).
 
 One step remains, because a plugin cannot start a background service: from any
 session, ask Claude to **`start the statusline watcher`** — the bundled
@@ -138,11 +144,19 @@ frozen. `node src/cli.js autostart` is the durable fix.
 
 ## Updating
 
-Plugin install:
+Plugin install — note this is `claude plugin update`, a terminal command:
 
 ```
-/plugin update statusline@statusline
+claude plugin update statusline@statusline
 ```
+
+Then restart Claude Code (or `/reload-plugins`) to apply it, and restart the
+watcher so it runs the new code: ask Claude to *restart the statusline
+watcher*, or kill the pid in `~/.statusline/watcher.lock` and start it again.
+
+`claude plugin install` does **not** upgrade an existing install — it reports
+"already installed" and leaves the old version in place. To stop doing this by
+hand, enable auto-update once in `/plugin` → **Marketplaces** → `statusline`.
 
 Clone install:
 

@@ -124,6 +124,128 @@ test('a plugin install is never told to link the skill it already ships', () => 
   }
 });
 
+// Which skill Claude Code actually loads, and whether it is ours. A team
+// deployment reports this per machine, so the failure it has to catch is a copy
+// somebody made months ago: the client keeps updating, the skill does not, and
+// the version column looks perfectly current the whole time.
+
+const skills = require('../src/skill-status');
+
+// A throwaway agent root carrying a skill. Real files, because the whole
+// mechanism is a content hash — stubbing fs would test nothing.
+function fakeAgent(body) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'statusline-agent-'));
+  const dir = path.join(root, 'skills', 'statusline');
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'SKILL.md'), body);
+  fs.writeFileSync(path.join(dir, 'sl.js'), '// helper\n');
+  return { root, dir };
+}
+
+function fakeHome() {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'statusline-home-'));
+  fs.mkdirSync(path.join(home, '.claude', 'skills'), { recursive: true });
+  return home;
+}
+
+test('an unlinked clone reports no skill at all', () => {
+  const { root } = fakeAgent('---\nname: statusline\n---\n');
+  const state = skills.detect({ root, homeDir: fakeHome() });
+  assert.deepStrictEqual(state, { installed: false, via: 'none', sha: null, matches_agent: false, shadowed: false });
+});
+
+test('a linked skill tracks the checkout and is never stale', () => {
+  const { root, dir } = fakeAgent('---\nname: statusline\n---\n');
+  const home = fakeHome();
+  // Junction, not a symlink: on Windows a directory junction is the one link
+  // type that does not need an elevated prompt, which is why install offers it.
+  fs.symlinkSync(dir, path.join(home, '.claude', 'skills', 'statusline'), 'junction');
+
+  const state = skills.detect({ root, homeDir: home });
+  assert.strictEqual(state.via, 'linked');
+  assert.strictEqual(state.installed, true);
+  assert.strictEqual(state.matches_agent, true);
+  assert.strictEqual(state.sha, skills.fingerprint(dir), 'a link fingerprints as its target');
+});
+
+test('a copy that has fallen behind reports itself stale', () => {
+  const { root } = fakeAgent('---\nname: statusline\n---\nversion two of the skill\n');
+  const home = fakeHome();
+  const personal = path.join(home, '.claude', 'skills', 'statusline');
+  fs.mkdirSync(personal, { recursive: true });
+  // What someone gets by copying the directory instead of linking it: frozen at
+  // the moment of the copy while the client keeps moving.
+  fs.writeFileSync(path.join(personal, 'SKILL.md'), '---\nname: statusline\n---\nversion ONE\n');
+  fs.writeFileSync(path.join(personal, 'sl.js'), '// helper\n');
+
+  const state = skills.detect({ root, homeDir: home });
+  assert.strictEqual(state.via, 'copied');
+  assert.strictEqual(state.installed, true, 'a stale skill is still installed — it just is not ours');
+  assert.strictEqual(state.matches_agent, false);
+});
+
+test('a copy with identical bytes is current but still reported as a copy', () => {
+  // It will drift the next time we ship. Same content today, different future.
+  const body = '---\nname: statusline\n---\n';
+  const { root } = fakeAgent(body);
+  const home = fakeHome();
+  const personal = path.join(home, '.claude', 'skills', 'statusline');
+  fs.mkdirSync(personal, { recursive: true });
+  fs.writeFileSync(path.join(personal, 'SKILL.md'), body);
+  fs.writeFileSync(path.join(personal, 'sl.js'), '// helper\n');
+
+  const state = skills.detect({ root, homeDir: home });
+  assert.strictEqual(state.via, 'copied');
+  assert.strictEqual(state.matches_agent, true);
+});
+
+test('a plugin install carries its own skill and never looks stale', () => {
+  // isPluginInstall reads the versioned cache path, so the root has to look
+  // like a real one.
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'statusline-plug-'));
+  const root = path.join(base, 'plugins', 'cache', 'statusline', 'statusline', '0.3.2');
+  const dir = path.join(root, 'skills', 'statusline');
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'SKILL.md'), '---\nname: statusline\n---\n');
+  fs.writeFileSync(path.join(dir, 'sl.js'), '// helper\n');
+
+  const state = skills.detect({ root, homeDir: fakeHome() });
+  assert.strictEqual(state.via, 'plugin');
+  assert.strictEqual(state.matches_agent, true);
+  assert.strictEqual(state.shadowed, false);
+});
+
+test('a plugin install flags an older personal copy left behind by a clone', () => {
+  // Claude Code loads both. The leftover can win, and then the skill in use is
+  // not the one the client version claims.
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'statusline-plug2-'));
+  const root = path.join(base, 'plugins', 'cache', 'statusline', 'statusline', '0.3.2');
+  fs.mkdirSync(path.join(root, 'skills', 'statusline'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'skills', 'statusline', 'SKILL.md'), '---\nname: statusline\n---\nnew\n');
+  fs.writeFileSync(path.join(root, 'skills', 'statusline', 'sl.js'), '// helper\n');
+
+  const home = fakeHome();
+  const personal = path.join(home, '.claude', 'skills', 'statusline');
+  fs.mkdirSync(personal, { recursive: true });
+  fs.writeFileSync(path.join(personal, 'SKILL.md'), '---\nname: statusline\n---\nOLD\n');
+  fs.writeFileSync(path.join(personal, 'sl.js'), '// helper\n');
+
+  assert.strictEqual(skills.detect({ root, homeDir: home }).shadowed, true);
+});
+
+test('what the uploader sends carries no paths — only the verdict', () => {
+  // The local API's skill status also holds absolute paths and a command
+  // containing the user's home directory. None of that may cross the network
+  // (rule 2), so the upload projection is built field by field and this test is
+  // what keeps it that way when someone extends detect().
+  const sent = skills.forUpload();
+  assert.deepStrictEqual(Object.keys(sent).sort(), ['installed', 'matches_agent', 'sha', 'shadowed', 'via']);
+  for (const [k, v] of Object.entries(sent)) {
+    if (typeof v !== 'string') continue;
+    assert.ok(!/[\\/]/.test(v), `${k} must not carry anything path-shaped: ${v}`);
+  }
+});
+
 test('sl.js is dependency-free, like everything else that ships', () => {
   const src = fs.readFileSync(SL, 'utf8');
   const requires = [...src.matchAll(/require\('([^']+)'\)/g)].map((m) => m[1]);
