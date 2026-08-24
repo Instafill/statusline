@@ -1,6 +1,6 @@
 ---
 name: statusline
-description: Read and operate statusline, the local observer of Claude Code sessions on this machine. Use when the user asks what they worked on, which projects or technologies their sessions show, how much experience the data backs, why a session is unclassified or stuck pending, whether capture/the watcher/uploads are healthy, or asks to classify, re-fold, recompute or diagnose statusline — and to finish setup: start the watcher, register it at login, or join/connect/enroll this machine with a team deployment using an enroll code. Covers the ~/.statusline data dir and the local API on 127.0.0.1:45817.
+description: "Read and operate statusline, the local observer of Claude Code sessions on this machine. Use when the user asks what they worked on, what capabilities their sessions support, which projects or technologies appear, how much experience the evidence backs, why a session is unclassified or stuck pending, whether capture/the watcher/uploads are healthy, or asks to classify, re-fold, recompute or diagnose statusline — and to finish setup: start the watcher, register it at login, or join/connect/enroll this machine with a team deployment using an enroll code. Covers the ~/.statusline data dir and the local API on 127.0.0.1:45817."
 user-invocable: true
 allowed-tools:
   - Bash
@@ -13,6 +13,31 @@ statusline watches Claude Code sessions on this machine, classifies the
 professional work in each one, groups sessions into projects, and derives
 practitioner experience from them. Everything is local: `~/.statusline`
 (override `STATUSLINE_HOME`), served at `http://127.0.0.1:45817`.
+
+## Evidence first, catalog second
+
+Statusline currently exposes two different layers. Keep them distinct in every
+answer:
+
+1. **Observed work:** session descriptions, projects, tool evidence,
+   technologies, depth, and classification provenance.
+2. **Catalog reporting:** `business_capabilities` selected from the current
+   closed, versioned catalog and aggregated by distinct project.
+
+The catalog is a governed reporting projection, not an exhaustive definition
+of what the person can do. Lead with observed work when the user asks broadly
+what they did or what their work demonstrates. Present the second layer as
+**catalog-reported capabilities**. If professional work is visible in sessions
+but absent or awkwardly represented in the catalog, describe the evidence and
+call out the mapping gap; never stretch it into the nearest available label or
+say the person did no work.
+
+The taxonomy-blind episode and open-evidence architecture is still a research
+workflow, not the production classifier. This skill does not silently run that
+pipeline, read participant-study roots, or turn research output into profile
+claims. Those actions require their separately frozen scope, consent, privacy,
+and review gates. Normal Statusline classification remains available and still
+uses the production catalog.
 
 ## Use the bundled helper
 
@@ -111,11 +136,19 @@ project. Sessions whose state is not `classified` have no work description yet;
 the helper counts them at the bottom — say so rather than quietly dropping
 them.
 
-**"What can I claim I know?"** — `sl.js experience`. Lead with the
-**business capabilities** (what problems this person solves, from a fixed
-catalog); technologies are the supporting facet, not the answer. Report
-**distinct projects, not sessions**: the model deliberately reduces within a
-project first, so session volume can never inflate a capability.
+**"What can I claim I know?"** — use `sl.js sessions 30` and
+`sl.js experience`; inspect representative records with `sl.js session <sid>`
+when the summary needs evidence detail. Answer in this order:
+
+1. recurring observed work, grounded in project/session descriptions;
+2. catalog-reported capabilities, explicitly labeled as non-exhaustive;
+3. technology evidence and its qualifiers; and
+4. visible gaps, excluded work, or uncertainty.
+
+Report **distinct projects, not sessions**: the model deliberately reduces
+within a project first, so session volume can never inflate a catalog-reported
+capability. Technologies are a supporting facet rather than a substitute for
+the work description.
 
 Repeat the qualifiers the helper prints rather than smoothing them over:
 `← unverified` on a technology means the LLM claimed hands-on and no tool
