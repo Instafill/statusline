@@ -69,6 +69,16 @@ test('plugin and marketplace manifests agree with package.json', () => {
   assert.ok(market.owner && market.owner.name, 'owner is required by the marketplace schema');
 });
 
+test('Codex plugin manifest agrees with package.json and exposes the shared skill', () => {
+  const pkg = readJson('package.json');
+  const plugin = readJson('.codex-plugin/plugin.json');
+
+  assert.strictEqual(plugin.name, 'statusline');
+  assert.strictEqual(plugin.version, pkg.version, 'Codex plugin version tracks package.json');
+  assert.strictEqual(plugin.skills, './skills/');
+  assert.ok(plugin.interface && plugin.interface.displayName === 'Statusline');
+});
+
 test('the skill ships inside the plugin', () => {
   // Plugins scan skills/ by default; if this moves, /statusline:statusline
   // silently stops existing for every plugin install.
