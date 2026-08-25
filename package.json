@@ -19,16 +19,20 @@
     "format:check": "prettier --check .",
     "lint": "eslint . --max-warnings=0",
     "lint:fix": "eslint . --fix --max-warnings=0",
-    "check": "prettier --check . && eslint . --max-warnings=0 && node --test"
+    "bump": "node scripts/bump-version.js",
+    "typecheck": "tsc",
+    "check": "prettier --check . && eslint . --max-warnings=0 && tsc && node --test"
   },
   "engines": {
     "node": ">=22"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@types/node": "^26.3.0",
     "eslint": "^10.9.1",
     "eslint-plugin-n": "^18.3.0",
     "globals": "^17.11.0",
-    "prettier": "^3.9.6"
+    "prettier": "^3.9.6",
+    "typescript": "^7.0.2"
   }
 }

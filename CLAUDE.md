@@ -27,9 +27,11 @@ or how experience is counted.
 1. **Zero runtime dependencies.** Everything under `src/`, `hooks/`,
    `statusline-segment.js` and `test/` is built-in Node only (`http`, `fs`,
    `node:test`) — never add an npm package, and `package.json` has no
-   `dependencies`. `devDependencies` carry the formatter and the linter and
-   nothing else: no shipped file may ever `require()` one, and neither installer
-   runs an install step, so a clone is complete the moment it lands.
+   `dependencies`. `devDependencies` carry development tooling only, the kind
+   that reads the source without becoming part of it: formatter, linter, type
+   checker. The test is whether a shipped file could ever `require()` one. None
+   may, neither installer runs an install step, and a clone is complete the
+   moment it lands.
 2. **Privacy.** Tool *outputs* and file *contents* are never captured — only
    prompts, paths, tool names, and secret-masked commands. Exactly TWO network
    egress channels exist: (a) the classifier call through the user's own
@@ -293,7 +295,8 @@ and `.claude-plugin/marketplace.json` together.
 | `npm test` / `bun run test` | Full test suite, no LLM calls, no network. `bun run test`, never `bun test` — the latter bypasses the script and uses bun's own runner instead of `node --test` |
 | `npm run format` / `bun run format` | Rewrite every file Prettier owns |
 | `npm run lint` / `bun run lint` | ESLint, `--max-warnings=0` |
-| `npm run check` / `bun run check` | Format check, lint and tests in one gate |
+| `npm run check` / `bun run check` | Format check, lint, types and tests in one gate |
+| `npm run bump` / `bun run bump` | Move the version in all three manifests (`patch`/`minor`/`major`, or interactive). Never tags, never pushes |
 | `install.ps1` / `install.sh` | Bootstrap: verify Node, install hooks, autostart, doctor, open UI |
 
 ## Layout
@@ -349,7 +352,7 @@ test/                     node:test suites + fixture copy of a settings.json
 `npm run` equivalents). Both package managers are supported, so every script
 calls a bare binary name and never `npx` or `bunx`, and both lockfiles are
 committed and move together. `bun run check` is the single gate: format check,
-lint, tests.
+lint, types, tests.
 
 - **Prettier owns formatting**, `printWidth` 100. It does not touch
   `public/vendor/` (vendored, minified), `test/fixtures/` (a file whose

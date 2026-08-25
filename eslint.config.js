@@ -12,9 +12,10 @@ const n = require('eslint-plugin-n');
 const globals = require('globals');
 
 // `const { a, b, ...rest } = doc` is how this codebase drops fields it must not
-// carry — the upload sha exclusion and the content strip both read that way — so
-// a named sibling is the point, not an oversight. A bare `catch (e)` that
-// deliberately swallows is the other shape worth allowing.
+// carry, in `docSha` (src/upload/index.js) and `stripContent`
+// (src/upload/strip.js). Those named siblings are deliberate, so
+// `ignoreRestSiblings` keeps them from reading as oversights. `caughtErrors`
+// allows the same for a `catch (e)` that swallows on purpose.
 const NO_UNUSED_VARS = [
   'error',
   { caughtErrors: 'none', argsIgnorePattern: '^_', ignoreRestSiblings: true },
@@ -47,11 +48,10 @@ module.exports = defineConfig([
     },
   },
 
-  // `engines` is a promise to the people who install statusline, and the rule
-  // above holds shipped code to it. Tests are never installed: they run on
-  // whatever a contributor has, which is already 22.13 or newer because ESLint
-  // 10 refuses to start below that. Holding them to the user floor would force
-  // the product's minimum up for a reason no user is affected by.
+  // `engines` in package.json is the floor users install against, and the rule
+  // above holds shipped code to it. Tests are never installed, so they are held
+  // to the contributor floor instead. That floor is whatever the devDependencies
+  // themselves require, so it moves when they do.
   {
     files: ['test/**/*.js'],
     rules: {
