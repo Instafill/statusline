@@ -349,3 +349,30 @@ everything it doesn't own. No test may invoke the real classifier; exercise
 that path manually with `node src/cli.js classify <sid>`. User corrections
 always win: any new derived data must flow through `corrections.json` overlays
 on recompute, never overwrite them.
+
+## Agent skills
+
+### Issue tracker
+
+Two surfaces. Default is Linear, team `Instafill`, project **`Statusline`**, via
+the Linear MCP tools. Everything from this repo goes in that project - the team
+is shared with four other repos, so the project is what says which repo an issue
+is about. Local markdown under `.scratch/` is used only when the user explicitly
+asks for a local or scratch ticket. Never mix the two inside one effort. GitHub
+PRs are not a triage surface. A sub-issue of an epic carries both `parentId` and
+`relatedTo` the epic, and inherits its siblings' project, labels and priority.
+The agent moves its own ticket to `In Progress`, then `Testing`, then `Done`
+after the merge. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+In Linear the triage roles are mostly statuses: `needs-triage` is `Backlog`,
+`ready-for-human` is `Todo`, `wontfix` is `Canceled`. Two roles carry a real
+label: `Ready for agent` and `Needs info`. Categories are the existing `Bug` /
+`Feature` / `Improvement` labels. On the local surface all five roles stay plain
+labels. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` and `docs/adr/` at the repo root, read after
+`CLAUDE.md` and `ARCHITECTURE.md`. See `docs/agents/domain.md`.
