@@ -85,19 +85,30 @@ test('an unparseable payload spools verbatim', async () => {
   assertClean(res);
   const files = spooled(home);
   assert.strictEqual(files.length, 1);
-  assert.strictEqual(fs.readFileSync(path.join(home, 'spool', 'new', files[0]), 'utf8'), 'not json at all');
+  assert.strictEqual(
+    fs.readFileSync(path.join(home, 'spool', 'new', files[0]), 'utf8'),
+    'not json at all'
+  );
 });
 
 test('the self-observation guard suppresses the spool entirely', async () => {
   const home = freshHome();
-  const res = await runHook(home, { session_id: 's1', hook_event_name: 'Stop' }, { STATUSLINE_SELF: '1' });
+  const res = await runHook(
+    home,
+    { session_id: 's1', hook_event_name: 'Stop' },
+    { STATUSLINE_SELF: '1' }
+  );
   assertClean(res);
   assert.strictEqual(spooled(home).length, 0);
 });
 
 test('CLAUDE_PID is recorded on the spooled event', async () => {
   const home = freshHome();
-  const res = await runHook(home, { session_id: 's1', hook_event_name: 'Stop' }, { CLAUDE_PID: '4242' });
+  const res = await runHook(
+    home,
+    { session_id: 's1', hook_event_name: 'Stop' },
+    { CLAUDE_PID: '4242' }
+  );
   assertClean(res);
   const files = spooled(home);
   const doc = JSON.parse(fs.readFileSync(path.join(home, 'spool', 'new', files[0]), 'utf8'));

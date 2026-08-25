@@ -12,7 +12,9 @@ const core = require('./grouping-core');
 
 function loadCorrections() {
   const c = readJson(paths.corrections, null);
-  return c && typeof c === 'object' ? { ...core.EMPTY_CORRECTIONS, ...c } : { ...core.EMPTY_CORRECTIONS };
+  return c && typeof c === 'object'
+    ? { ...core.EMPTY_CORRECTIONS, ...c }
+    : { ...core.EMPTY_CORRECTIONS };
 }
 
 function saveCorrections(c) {
@@ -42,14 +44,22 @@ function setSessionLabel(sid, label) {
 
 function setSessionOverrides(sid, fieldOverrides) {
   const c = loadCorrections();
-  c.sessions[sid] = { ...(c.sessions[sid] || {}), field_overrides: fieldOverrides, updated_at: new Date().toISOString() };
+  c.sessions[sid] = {
+    ...(c.sessions[sid] || {}),
+    field_overrides: fieldOverrides,
+    updated_at: new Date().toISOString(),
+  };
   saveCorrections(c);
   return recompute();
 }
 
 function setSessionProject(sid, projectId) {
   const c = loadCorrections();
-  c.sessions[sid] = { ...(c.sessions[sid] || {}), project_id: projectId || undefined, updated_at: new Date().toISOString() };
+  c.sessions[sid] = {
+    ...(c.sessions[sid] || {}),
+    project_id: projectId || undefined,
+    updated_at: new Date().toISOString(),
+  };
   if (!projectId) delete c.sessions[sid].project_id;
   saveCorrections(c);
   return recompute();
@@ -57,14 +67,22 @@ function setSessionProject(sid, projectId) {
 
 function renameProject(projectId, name) {
   const c = loadCorrections();
-  c.projects[projectId] = { ...(c.projects[projectId] || {}), name, updated_at: new Date().toISOString() };
+  c.projects[projectId] = {
+    ...(c.projects[projectId] || {}),
+    name,
+    updated_at: new Date().toISOString(),
+  };
   saveCorrections(c);
   return recompute();
 }
 
 function mergeProjects(fromId, intoId) {
   const c = loadCorrections();
-  c.projects[fromId] = { ...(c.projects[fromId] || {}), merged_into: intoId, updated_at: new Date().toISOString() };
+  c.projects[fromId] = {
+    ...(c.projects[fromId] || {}),
+    merged_into: intoId,
+    updated_at: new Date().toISOString(),
+  };
   saveCorrections(c);
   return recompute();
 }

@@ -8,7 +8,9 @@
 // config written by either era keeps working.
 
 function baseOf(endpoint) {
-  const raw = String(endpoint || '').trim().replace(/\/+$/, '');
+  const raw = String(endpoint || '')
+    .trim()
+    .replace(/\/+$/, '');
   try {
     const u = new URL(raw);
     const path = u.pathname.replace(/\/v1\/(ingest|enroll)$/, '').replace(/\/+$/, '');

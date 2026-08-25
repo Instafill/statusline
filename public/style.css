@@ -11,7 +11,7 @@
 
 /* Bootstrap's dark theme, nudged toward the denser, cooler palette this app
    has always used. These are Bootstrap's own variables, not a reimplementation. */
-[data-bs-theme=dark] {
+[data-bs-theme='dark'] {
   --bs-body-bg: #0f1115;
   --bs-body-color: #d7dae2;
   --bs-body-font-size: 0.875rem;
@@ -26,99 +26,334 @@
   --bs-card-border-color: #2a2f3d;
 }
 
-body { font-family: "Segoe UI", system-ui, sans-serif; }
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
 
 /* Cards carry content directly in this app (no .card-body wrapper), because
    most are a heading plus a table or a grid. One padding rule beats threading
    an extra div through every view. */
-.card { padding: 1rem; margin-bottom: 1rem; }
-.card > h2 { font-size: 1rem; margin-bottom: .625rem; }
-.card > h2 .hint, h2 .hint { color: var(--bs-secondary-color); font-weight: 400; font-size: .75rem; margin-left: .5rem; }
+.card {
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+.card > h2 {
+  font-size: 1rem;
+  margin-bottom: 0.625rem;
+}
+.card > h2 .hint,
+h2 .hint {
+  color: var(--bs-secondary-color);
+  font-weight: 400;
+  font-size: 0.75rem;
+  margin-left: 0.5rem;
+}
 
 /* Dense tables: this is a diagnostic surface, not a marketing page. */
-.table { font-size: .8125rem; }
-.table > thead th { color: var(--bs-secondary-color); font-weight: 500; font-size: .6875rem; text-transform: uppercase; letter-spacing: .04em; }
-.table > tbody td { vertical-align: top; }
-tr.rowlink { cursor: pointer; }
+.table {
+  font-size: 0.8125rem;
+}
+.table > thead th {
+  color: var(--bs-secondary-color);
+  font-weight: 500;
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.table > tbody td {
+  vertical-align: top;
+}
+tr.rowlink {
+  cursor: pointer;
+}
 
-pre { background: #0b0d12; border: 1px solid var(--bs-border-color); border-radius: .375rem; padding: .75rem; overflow-x: auto; font-size: .75rem; white-space: pre-wrap; word-break: break-word; }
-code { overflow-wrap: anywhere; }
-summary { cursor: pointer; color: var(--bs-secondary-color); }
+pre {
+  background: #0b0d12;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.375rem;
+  padding: 0.75rem;
+  overflow-x: auto;
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+code {
+  overflow-wrap: anywhere;
+}
+summary {
+  cursor: pointer;
+  color: var(--bs-secondary-color);
+}
 
 /* --------------------------------- utilities ------------------------------- */
 
 /* Semantic aliases used throughout the views. Mapped onto Bootstrap's own
    theme colors so a theme change carries. */
-.dim { color: var(--bs-secondary-color); }
-.small { font-size: .75rem; }
-.ok { color: var(--bs-success-text-emphasis); }
-.bad { color: var(--bs-danger-text-emphasis); }
-.section { margin-top: .75rem; }
-.note { color: var(--bs-secondary-color); font-size: .75rem; margin-top: .5rem; }
-.empty { color: var(--bs-secondary-color); padding: 2.5rem; text-align: center; }
-.subhead, .meta-grid div b { display: block; color: var(--bs-secondary-color); font-weight: 500; font-size: .6875rem; text-transform: uppercase; letter-spacing: .04em; }
-.subhead { margin-bottom: .25rem; }
+.dim {
+  color: var(--bs-secondary-color);
+}
+.small {
+  font-size: 0.75rem;
+}
+.ok {
+  color: var(--bs-success-text-emphasis);
+}
+.bad {
+  color: var(--bs-danger-text-emphasis);
+}
+.section {
+  margin-top: 0.75rem;
+}
+.note {
+  color: var(--bs-secondary-color);
+  font-size: 0.75rem;
+  margin-top: 0.5rem;
+}
+.empty {
+  color: var(--bs-secondary-color);
+  padding: 2.5rem;
+  text-align: center;
+}
+.subhead,
+.meta-grid div b {
+  display: block;
+  color: var(--bs-secondary-color);
+  font-weight: 500;
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.subhead {
+  margin-bottom: 0.25rem;
+}
 
 /* Label/value grid on every detail card — Bootstrap's grid is row/col markup;
    this is one declaration and needs no wrapper divs in the views. */
-.meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .375rem 1.25rem; }
-.meta-grid > div { min-width: 0; overflow-wrap: anywhere; }
-.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1.25rem; }
-.controls-row { display: flex; flex-wrap: wrap; align-items: center; gap: .375rem; }
-.controls-row .subhead { margin-bottom: 0; }
-.field { margin-bottom: .625rem; }
+.meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.375rem 1.25rem;
+}
+.meta-grid > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 1.25rem;
+}
+.controls-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+}
+.controls-row .subhead {
+  margin-bottom: 0;
+}
+.field {
+  margin-bottom: 0.625rem;
+}
 
 /* ------------------------- evidence chips (app-specific) ------------------- */
 
 /* Not Bootstrap badges: the border/dash carries meaning (verified vs claimed),
    and they wrap in dense lists. */
-.chip { display: inline-block; margin: .125rem .25rem .125rem 0; padding: .125rem .625rem; border-radius: .75rem; font-size: .75rem; background: var(--bs-tertiary-bg); }
-.chip.hands_on { border: 1px solid var(--bs-success); color: var(--bs-success-text-emphasis); background: transparent; }
+.chip {
+  display: inline-block;
+  margin: 0.125rem 0.25rem 0.125rem 0;
+  padding: 0.125rem 0.625rem;
+  border-radius: 0.75rem;
+  font-size: 0.75rem;
+  background: var(--bs-tertiary-bg);
+}
+.chip.hands_on {
+  border: 1px solid var(--bs-success);
+  color: var(--bs-success-text-emphasis);
+  background: transparent;
+}
 /* hands_on the classifier claimed but no tool evidence corroborates */
-.chip.hands_on.unverified { border-style: dashed; opacity: .75; }
-.chip.discussed { border: 1px solid var(--bs-primary); color: var(--bs-primary-text-emphasis); background: transparent; }
-.chip.mentioned { color: var(--bs-secondary-color); }
-.chip.task { color: #c5a3ff; }
-.chip.industry { color: var(--bs-warning-text-emphasis); }
-.chip.bcap { border: 1px solid var(--bs-info-border-subtle); color: var(--bs-info-text-emphasis); }
+.chip.hands_on.unverified {
+  border-style: dashed;
+  opacity: 0.75;
+}
+.chip.discussed {
+  border: 1px solid var(--bs-primary);
+  color: var(--bs-primary-text-emphasis);
+  background: transparent;
+}
+.chip.mentioned {
+  color: var(--bs-secondary-color);
+}
+.chip.task {
+  color: #c5a3ff;
+}
+.chip.industry {
+  color: var(--bs-warning-text-emphasis);
+}
+.chip.bcap {
+  border: 1px solid var(--bs-info-border-subtle);
+  color: var(--bs-info-text-emphasis);
+}
 
 /* --------------------------- liveness and accents -------------------------- */
 
-.live-dot { display: inline-block; width: .5rem; height: .5rem; border-radius: 50%; background: var(--bs-success); flex: none; animation: livepulse 2s ease-in-out infinite; }
-.live-dot.err { background: var(--bs-danger); animation: none; }
-.live-tag { display: inline-flex; align-items: center; gap: .25rem; color: var(--bs-success-text-emphasis); font-size: .6875rem; }
-@keyframes livepulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+.live-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--bs-success);
+  flex: none;
+  animation: livepulse 2s ease-in-out infinite;
+}
+.live-dot.err {
+  background: var(--bs-danger);
+  animation: none;
+}
+.live-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--bs-success-text-emphasis);
+  font-size: 0.6875rem;
+}
+@keyframes livepulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
 /* Project accent: a colored dot beside the folder name groups sessions of the
    same project without tinting the whole row. */
-.prj-dot { display: inline-block; width: .5rem; height: .5rem; border-radius: 50%; margin-right: .375rem; vertical-align: baseline; }
+.prj-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  margin-right: 0.375rem;
+  vertical-align: baseline;
+}
 
-.statusbar { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-bottom: .625rem; font-size: .75rem; }
-.statusbar-right { margin-left: auto; }
+.statusbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.625rem;
+  font-size: 0.75rem;
+}
+.statusbar-right {
+  margin-left: auto;
+}
 
 /* --------------------------- session detail pieces ------------------------- */
 
-.cls-summary { display: flex; flex-wrap: wrap; align-items: center; gap: .625rem; margin-bottom: .875rem; }
-.cls-summary .cls-worktype { font-size: 1rem; font-weight: 600; }
-.cls-summary .cls-conf { margin-left: auto; color: var(--bs-secondary-color); font-size: .75rem; }
-.conf { display: inline-block; width: 5rem; height: .5rem; background: var(--bs-tertiary-bg); border-radius: .25rem; overflow: hidden; vertical-align: middle; margin-left: .375rem; }
-.conf i { display: block; height: 100%; background: var(--bs-success); }
-.rationale { font-style: italic; color: var(--bs-secondary-color); margin-top: .5rem; }
-.prompt-item { border-left: 3px solid var(--bs-border-color); padding: .25rem .625rem; margin: .375rem 0; }
-.prompt-item .when { color: var(--bs-secondary-color); font-size: .6875rem; }
-.prompt-item.assistant { border-left-color: var(--bs-primary); white-space: pre-wrap; }
-.proj-head { display: flex; align-items: baseline; justify-content: space-between; }
+.cls-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.625rem;
+  margin-bottom: 0.875rem;
+}
+.cls-summary .cls-worktype {
+  font-size: 1rem;
+  font-weight: 600;
+}
+.cls-summary .cls-conf {
+  margin-left: auto;
+  color: var(--bs-secondary-color);
+  font-size: 0.75rem;
+}
+.conf {
+  display: inline-block;
+  width: 5rem;
+  height: 0.5rem;
+  background: var(--bs-tertiary-bg);
+  border-radius: 0.25rem;
+  overflow: hidden;
+  vertical-align: middle;
+  margin-left: 0.375rem;
+}
+.conf i {
+  display: block;
+  height: 100%;
+  background: var(--bs-success);
+}
+.rationale {
+  font-style: italic;
+  color: var(--bs-secondary-color);
+  margin-top: 0.5rem;
+}
+.prompt-item {
+  border-left: 3px solid var(--bs-border-color);
+  padding: 0.25rem 0.625rem;
+  margin: 0.375rem 0;
+}
+.prompt-item .when {
+  color: var(--bs-secondary-color);
+  font-size: 0.6875rem;
+}
+.prompt-item.assistant {
+  border-left-color: var(--bs-primary);
+  white-space: pre-wrap;
+}
+.proj-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
 
 /* One capability row: chip + distinct-project facts + collapsible trace. */
-.exp-cap { display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem; padding: .3125rem 0; border-bottom: 1px dotted var(--bs-border-color); }
-.exp-cap:last-child { border-bottom: none; }
-.exp-cap details { flex-basis: 100%; margin: 0 0 .125rem .75rem; }
+.exp-cap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.3125rem 0;
+  border-bottom: 1px dotted var(--bs-border-color);
+}
+.exp-cap:last-child {
+  border-bottom: none;
+}
+.exp-cap details {
+  flex-basis: 100%;
+  margin: 0 0 0.125rem 0.75rem;
+}
 
 /* Business-capability tier badges. "grounded" ≠ "verified" — the vocabulary
    is deliberate (see experience-core.js) and must never be relabeled. */
-.exp-domain-h { letter-spacing: .08em; text-transform: uppercase; margin-top: .625rem; }
-.cap-badge { font-size: .6875rem; letter-spacing: .04em; padding: .0625rem .5rem; border-radius: 999px; border: 1px solid; }
-.cap-badge.grounded { color: var(--bs-success-text-emphasis); border-color: var(--bs-success-border-subtle); }
-.cap-badge.claimed { color: var(--bs-warning-text-emphasis); border-color: var(--bs-warning-border-subtle); }
-.cap-badge.prov { color: var(--bs-secondary-color); border-color: var(--bs-border-color); }
+.exp-domain-h {
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 0.625rem;
+}
+.cap-badge {
+  font-size: 0.6875rem;
+  letter-spacing: 0.04em;
+  padding: 0.0625rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid;
+}
+.cap-badge.grounded {
+  color: var(--bs-success-text-emphasis);
+  border-color: var(--bs-success-border-subtle);
+}
+.cap-badge.claimed {
+  color: var(--bs-warning-text-emphasis);
+  border-color: var(--bs-warning-border-subtle);
+}
+.cap-badge.prov {
+  color: var(--bs-secondary-color);
+  border-color: var(--bs-border-color);
+}
 
-textarea.cfg { height: 20rem; font-family: Consolas, monospace; font-size: .75rem; }
+textarea.cfg {
+  height: 20rem;
+  font-family: Consolas, monospace;
+  font-size: 0.75rem;
+}

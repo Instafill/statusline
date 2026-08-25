@@ -60,7 +60,13 @@ function validate(obj) {
     } else if (t && typeof t === 'object' && typeof t.name === 'string' && t.name.trim()) {
       technologies.push({
         name: t.name.trim(),
-        evidence: asEnum(t.evidence, EVIDENCE_LEVELS, 'mentioned', errors, 'technologies[].evidence'),
+        evidence: asEnum(
+          t.evidence,
+          EVIDENCE_LEVELS,
+          'mentioned',
+          errors,
+          'technologies[].evidence'
+        ),
         basis: ['semantic'],
       });
     }
@@ -77,7 +83,9 @@ function validate(obj) {
     // Deliberately catalog-agnostic: unknown ids survive into the raw twin so
     // a later catalog addition picks them up retroactively (deriveBusiness-
     // Capabilities filters against the CURRENT catalog on every fold).
-    business_capabilities: [...new Set(asStringArray(obj.business_capabilities).map((s) => s.toLowerCase()))].slice(0, 4),
+    business_capabilities: [
+      ...new Set(asStringArray(obj.business_capabilities).map((s) => s.toLowerCase())),
+    ].slice(0, 4),
     technologies,
     work_stage: asEnum(obj.work_stage, WORK_STAGES, 'unknown', errors, 'work_stage'),
     work_depth: asEnum(obj.work_depth, WORK_DEPTHS, 'shallow', errors, 'work_depth'),
@@ -88,7 +96,13 @@ function validate(obj) {
   };
 
   // Core fields must be usable; enum coercions above are warnings, not fatal.
-  const fatal = errors.filter((e) => e.startsWith('professional_work') || e.startsWith('confidence') || e === 'result is not a JSON object' || e === 'technologies must be an array');
+  const fatal = errors.filter(
+    (e) =>
+      e.startsWith('professional_work') ||
+      e.startsWith('confidence') ||
+      e === 'result is not a JSON object' ||
+      e === 'technologies must be an array'
+  );
   return { ok: fatal.length === 0, errors, value: fatal.length === 0 ? value : null };
 }
 

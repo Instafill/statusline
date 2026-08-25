@@ -28,7 +28,9 @@ async function classifySessionNow(sid, { trigger = 'manual' } = {}) {
         turns_at_classification: state.counts.turns,
         classifier_error: null,
       });
-      log.info(`session ${sid} inherited classification from ${inherited._meta.inherited_from} (no classifier call)`);
+      log.info(
+        `session ${sid} inherited classification from ${inherited._meta.inherited_from} (no classifier call)`
+      );
       try {
         require('../grouping').recompute();
       } catch (e) {
@@ -53,7 +55,12 @@ async function classifySessionNow(sid, { trigger = 'manual' } = {}) {
   const digestText = buildDigest(state, cfg.digest);
   const sha = crypto.createHash('sha256').update(digestText).digest('hex');
   state = sessions.updateSession(sid, {
-    digest: { text: digestText, built_at: new Date().toISOString(), chars: digestText.length, sha256: sha },
+    digest: {
+      text: digestText,
+      built_at: new Date().toISOString(),
+      chars: digestText.length,
+      sha256: sha,
+    },
   });
 
   const res = await classifier.classifySession(state, digestText, { digest_sha256: sha, trigger });
@@ -66,7 +73,9 @@ async function classifySessionNow(sid, { trigger = 'manual' } = {}) {
       turns_at_classification: state.counts.turns,
       // A degraded (heuristic) result keeps the underlying failure visible so
       // the UI and the scheduler's auth backoff can still see it.
-      classifier_error: res.degraded ? `${res.outcome}: ${String(res.error).slice(0, 200)} (heuristic fallback applied)` : null,
+      classifier_error: res.degraded
+        ? `${res.outcome}: ${String(res.error).slice(0, 200)} (heuristic fallback applied)`
+        : null,
     });
     log.info(
       `session ${sid} ${res.degraded ? 'heuristic-classified' : 'classified'}: ${res.classification.work_type} (confidence ${res.classification.confidence})`
@@ -81,7 +90,9 @@ async function classifySessionNow(sid, { trigger = 'manual' } = {}) {
       classification_state: 'classification_failed',
       classifier_error: `${res.outcome}: ${res.error}`,
     });
-    log.warn(`session ${sid} classification failed (${res.outcome}): ${String(res.error).slice(0, 300)}`);
+    log.warn(
+      `session ${sid} classification failed (${res.outcome}): ${String(res.error).slice(0, 300)}`
+    );
   }
   return sessions.getSession(sid);
 }

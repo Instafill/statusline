@@ -10,15 +10,43 @@ const { projectSiblings } = require('./inherit');
 
 // Display names for canonical evidence tokens (fallback: the token itself).
 const TECH_DISPLAY = {
-  nodejs: 'Node.js', javascript: 'JavaScript', typescript: 'TypeScript', python: 'Python',
-  golang: 'Go', rust: 'Rust', csharp: 'C#', dotnet: '.NET', java: 'Java', kotlin: 'Kotlin',
-  ruby: 'Ruby', php: 'PHP', swift: 'Swift', dart: 'Dart', vue: 'Vue', svelte: 'Svelte',
-  html: 'HTML', css: 'CSS', sql: 'SQL', bash: 'Bash', powershell: 'PowerShell',
-  postgresql: 'PostgreSQL', mysql: 'MySQL', sqlite: 'SQLite',
-  docker: 'Docker', kubernetes: 'Kubernetes', terraform: 'Terraform',
-  aws: 'AWS', googlecloud: 'Google Cloud', azure: 'Azure', github: 'GitHub',
-  vercel: 'Vercel', netlify: 'Netlify', firebase: 'Firebase', supabase: 'Supabase',
-  prisma: 'Prisma', cloudflare: 'Cloudflare',
+  nodejs: 'Node.js',
+  javascript: 'JavaScript',
+  typescript: 'TypeScript',
+  python: 'Python',
+  golang: 'Go',
+  rust: 'Rust',
+  csharp: 'C#',
+  dotnet: '.NET',
+  java: 'Java',
+  kotlin: 'Kotlin',
+  ruby: 'Ruby',
+  php: 'PHP',
+  swift: 'Swift',
+  dart: 'Dart',
+  vue: 'Vue',
+  svelte: 'Svelte',
+  html: 'HTML',
+  css: 'CSS',
+  sql: 'SQL',
+  bash: 'Bash',
+  powershell: 'PowerShell',
+  postgresql: 'PostgreSQL',
+  mysql: 'MySQL',
+  sqlite: 'SQLite',
+  docker: 'Docker',
+  kubernetes: 'Kubernetes',
+  terraform: 'Terraform',
+  aws: 'AWS',
+  googlecloud: 'Google Cloud',
+  azure: 'Azure',
+  github: 'GitHub',
+  vercel: 'Vercel',
+  netlify: 'Netlify',
+  firebase: 'Firebase',
+  supabase: 'Supabase',
+  prisma: 'Prisma',
+  cloudflare: 'Cloudflare',
 };
 
 function workDepthOf(counts) {
@@ -39,7 +67,11 @@ function heuristicClassification(state, { trigger, digest_sha256, reason } = {})
     const cls = s.classification;
     if (!cls) continue;
     votes[cls.work_category] = (votes[cls.work_category] || 0) + 1;
-    if (cls.work_type && cls.work_type !== 'unknown' && (!donor || (s.classified_at || '') > (donor.classified_at || ''))) {
+    if (
+      cls.work_type &&
+      cls.work_type !== 'unknown' &&
+      (!donor || (s.classified_at || '') > (donor.classified_at || ''))
+    ) {
       donor = s;
     }
   }
@@ -54,7 +86,10 @@ function heuristicClassification(state, { trigger, digest_sha256, reason } = {})
   const donorCls = donor ? donor.classification : null;
 
   const tokens = [...new Set(collectToolEvidence(state).map((e) => e.token))];
-  const technologies = mergeEvidence(state, tokens.map((tok) => ({ name: TECH_DISPLAY[tok] || tok, evidence: 'hands_on' })));
+  const technologies = mergeEvidence(
+    state,
+    tokens.map((tok) => ({ name: TECH_DISPLAY[tok] || tok, evidence: 'hands_on' }))
+  );
 
   return {
     schema_version: 1,
@@ -75,7 +110,11 @@ function heuristicClassification(state, { trigger, digest_sha256, reason } = {})
     project_hint: donorCls ? donorCls.project_hint || '' : '',
     continuation: (state.sources || []).some((s) => ['resume', 'compact', 'fork'].includes(s)),
     confidence: 0.25,
-    rationale: `Heuristic fallback (classifier unavailable: ${reason || 'error'}) — derived from tool evidence and project history. Replaced automatically once the classifier is reachable.`.slice(0, 400),
+    rationale:
+      `Heuristic fallback (classifier unavailable: ${reason || 'error'}) — derived from tool evidence and project history. Replaced automatically once the classifier is reachable.`.slice(
+        0,
+        400
+      ),
     _meta: {
       model: null,
       classifier: 'heuristic',

@@ -41,7 +41,10 @@ function killTree(pid) {
   if (!pid) return;
   try {
     if (isWindows) {
-      spawnSync('taskkill', ['/pid', String(pid), '/T', '/F'], { timeout: 10000, windowsHide: true });
+      spawnSync('taskkill', ['/pid', String(pid), '/T', '/F'], {
+        timeout: 10000,
+        windowsHide: true,
+      });
     } else {
       // Negative pid targets the process group created by detached: true.
       try {
@@ -69,7 +72,14 @@ function autostartTarget() {
     // Two mechanisms: a Scheduled Task where policy allows it, else a launcher
     // in the per-user Startup folder, which needs no special rights at all.
     const appData = process.env.APPDATA || path.join(home, 'AppData', 'Roaming');
-    const startupDir = path.join(appData, 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup');
+    const startupDir = path.join(
+      appData,
+      'Microsoft',
+      'Windows',
+      'Start Menu',
+      'Programs',
+      'Startup'
+    );
     return {
       kind: 'schtasks',
       name: 'statusline-watcher',

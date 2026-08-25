@@ -167,7 +167,8 @@ function createUploader({ getSchedulerStats, startedAt, onTeamConfig }) {
       const ack = await res.json();
       if (!ack || typeof ack !== 'object' || !ack.team_config) return;
       const { changed, errors } = teamConfig.store(ack.team_config);
-      if (errors.length) log.warn(`team config from server partially invalid: ${errors.slice(0, 3).join('; ')}`);
+      if (errors.length)
+        log.warn(`team config from server partially invalid: ${errors.slice(0, 3).join('; ')}`);
       if (changed) {
         log.info(`team normalization tables updated to v${teamConfig.currentVersion()}`);
         if (onTeamConfig) onTeamConfig();
@@ -181,7 +182,9 @@ function createUploader({ getSchedulerStats, startedAt, onTeamConfig }) {
     consecutiveFailures++;
     const delay = Math.min(BACKOFF_MIN_MS * 2 ** (consecutiveFailures - 1), BACKOFF_MAX_MS);
     backoffUntil = Date.now() + delay;
-    log.warn(`upload failed (${consecutiveFailures} in a row) — next attempt in ${Math.round(delay / 1000)}s`);
+    log.warn(
+      `upload failed (${consecutiveFailures} in a row) — next attempt in ${Math.round(delay / 1000)}s`
+    );
   }
 
   function flush() {

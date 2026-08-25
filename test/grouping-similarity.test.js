@@ -14,7 +14,15 @@ const assert = require('node:assert');
 const { groupSessions, EMPTY_CORRECTIONS, WINDOWS_PATH_OPTS } = require('../src/grouping-core');
 
 let n = 0;
-function mkState({ cwd, gitRoot = null, mainRoot = null, origin = null, created, last, cls = null }) {
+function mkState({
+  cwd,
+  gitRoot = null,
+  mainRoot = null,
+  origin = null,
+  created,
+  last,
+  cls = null,
+}) {
   return {
     session_id: `sim-${n++}`,
     created_at: created,
@@ -28,14 +36,23 @@ function mkState({ cwd, gitRoot = null, mainRoot = null, origin = null, created,
   };
 }
 
-function cls(hint, techs, { category = 'internal_work', industry = [], continuation = false } = {}) {
+function cls(
+  hint,
+  techs,
+  { category = 'internal_work', industry = [], continuation = false } = {}
+) {
   return {
     work_category: category,
     industry,
     tasks: [],
     project_hint: hint,
     continuation,
-    technologies: techs.map(([name, evidence]) => ({ name, evidence, basis: ['semantic'], verified: false })),
+    technologies: techs.map(([name, evidence]) => ({
+      name,
+      evidence,
+      basis: ['semantic'],
+      verified: false,
+    })),
   };
 }
 
@@ -43,7 +60,10 @@ test('catch-all cwd sessions become flagged singletons, never one mega-project',
   const invoicing = mkState({
     cwd: 'C:\\Users\\sampleuser',
     created: '2026-08-01T10:00:00.000Z',
-    cls: cls('acme invoicing', [['QuickBooks', 'discussed']], { category: 'client_work', industry: ['accounting'] }),
+    cls: cls('acme invoicing', [['QuickBooks', 'discussed']], {
+      category: 'client_work',
+      industry: ['accounting'],
+    }),
   });
   const holiday = mkState({
     cwd: 'C:\\Users\\sampleuser',
@@ -205,7 +225,11 @@ test('technology aggregate carries the evidence trace with exact counts and a ca
   const kafka = projects[0].aggregate.technologies.find((t) => t.canonical === 'kafka');
   assert.strictEqual(kafka.sessions, 30, 'counts stay exact');
   assert.strictEqual(kafka.evidence.length, 25, 'trace capped at 25 rows');
-  assert.ok(kafka.evidence.every((r) => r.session_id && r.evidence === 'discussed' && r.category === 'internal_work'));
+  assert.ok(
+    kafka.evidence.every(
+      (r) => r.session_id && r.evidence === 'discussed' && r.category === 'internal_work'
+    )
+  );
   assert.strictEqual(kafka.max_evidence, 'discussed', 'repetition never promotes evidence');
 });
 
@@ -228,11 +252,27 @@ test('same content overlap, 7 days apart: temporal decay + continuation window k
   ];
   // Partial hint overlap (billing) + full tech overlap is NOT enough on its
   // own — the suggestion needs temporal proximity and the continuation bonus.
-  const near = groupSessions(mk('2026-08-01T13:00:00.000Z', '2026-08-01T14:00:00.000Z', true), EMPTY_CORRECTIONS, WINDOWS_PATH_OPTS);
-  assert.strictEqual(near.projects.flatMap((p) => p.suggested_merges).length, 1, 'close-range continuation pair not suggested');
+  const near = groupSessions(
+    mk('2026-08-01T13:00:00.000Z', '2026-08-01T14:00:00.000Z', true),
+    EMPTY_CORRECTIONS,
+    WINDOWS_PATH_OPTS
+  );
+  assert.strictEqual(
+    near.projects.flatMap((p) => p.suggested_merges).length,
+    1,
+    'close-range continuation pair not suggested'
+  );
 
-  const far = groupSessions(mk('2026-08-08T13:00:00.000Z', '2026-08-08T14:00:00.000Z', true), EMPTY_CORRECTIONS, WINDOWS_PATH_OPTS);
-  assert.strictEqual(far.projects.flatMap((p) => p.suggested_merges).length, 0, 'week-apart pair should decay below threshold');
+  const far = groupSessions(
+    mk('2026-08-08T13:00:00.000Z', '2026-08-08T14:00:00.000Z', true),
+    EMPTY_CORRECTIONS,
+    WINDOWS_PATH_OPTS
+  );
+  assert.strictEqual(
+    far.projects.flatMap((p) => p.suggested_merges).length,
+    0,
+    'week-apart pair should decay below threshold'
+  );
 });
 
 test('stopword-only hints contribute nothing — and gate the continuation bonus off entirely', () => {

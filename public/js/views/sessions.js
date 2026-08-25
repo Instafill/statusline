@@ -13,7 +13,10 @@ const SKILL_TIP_KEY = 'statusline_skill_tip';
 // polling it would be pure noise.
 let skillPromise = null;
 function loadSkill() {
-  if (!skillPromise) skillPromise = api('/api/status').then((s) => s.skill || null).catch(() => null);
+  if (!skillPromise)
+    skillPromise = api('/api/status')
+      .then((s) => s.skill || null)
+      .catch(() => null);
   return skillPromise;
 }
 
@@ -138,15 +141,30 @@ export async function renderSessions(el) {
     localStorage.setItem(SHOW_EMPTY_KEY, cb.checked ? '1' : '0');
     renderSessions(el);
   });
-  on('#skill-dismiss', 'click', () => {
-    localStorage.setItem(SKILL_TIP_KEY, 'dismissed');
-    renderSessions(el);
-  }, el);
-  on('[data-copy]', 'click', (b) => {
-    navigator.clipboard.writeText(b.dataset.copy);
-    b.textContent = 'copied';
-  }, el);
-  on('[data-goto]', 'click', (tr) => {
-    navigate(tr.dataset.goto);
-  }, el);
+  on(
+    '#skill-dismiss',
+    'click',
+    () => {
+      localStorage.setItem(SKILL_TIP_KEY, 'dismissed');
+      renderSessions(el);
+    },
+    el
+  );
+  on(
+    '[data-copy]',
+    'click',
+    (b) => {
+      navigator.clipboard.writeText(b.dataset.copy);
+      b.textContent = 'copied';
+    },
+    el
+  );
+  on(
+    '[data-goto]',
+    'click',
+    (tr) => {
+      navigate(tr.dataset.goto);
+    },
+    el
+  );
 }

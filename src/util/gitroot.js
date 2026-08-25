@@ -11,15 +11,20 @@ const cache = new Map();
 // the main repo's common dir — equal paths mean the ordinary main worktree.
 // A second (memoized) call captures the credential-stripped origin URL.
 function gitInfo(cwd) {
-  if (!cwd || typeof cwd !== 'string') return { root: null, worktree: null, main_root: null, origin: null };
+  if (!cwd || typeof cwd !== 'string')
+    return { root: null, worktree: null, main_root: null, origin: null };
   if (cache.has(cwd)) return cache.get(cwd);
   let info = { root: null, worktree: null, main_root: null, origin: null };
   try {
-    const res = spawnSync('git', ['-C', cwd, 'rev-parse', '--show-toplevel', '--git-dir', '--git-common-dir'], {
-      timeout: 3000,
-      encoding: 'utf8',
-      windowsHide: true,
-    });
+    const res = spawnSync(
+      'git',
+      ['-C', cwd, 'rev-parse', '--show-toplevel', '--git-dir', '--git-common-dir'],
+      {
+        timeout: 3000,
+        encoding: 'utf8',
+        windowsHide: true,
+      }
+    );
     if (res.status === 0 && res.stdout) {
       const [top, gitDir, commonDir] = res.stdout.trim().split(/\r?\n/);
       if (top) info.root = win(top);

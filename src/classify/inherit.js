@@ -31,7 +31,9 @@ function projectKeyOf(s) {
 function projectSiblings(state) {
   const key = projectKeyOf(state);
   if (!key) return [];
-  return sessions.listSessions().filter((o) => o.session_id !== state.session_id && projectKeyOf(o) === key);
+  return sessions
+    .listSessions()
+    .filter((o) => o.session_id !== state.session_id && projectKeyOf(o) === key);
 }
 
 function findDonor(state, inheritCfg) {
@@ -67,7 +69,8 @@ function tryInherit(state, cfg, trigger) {
   if (tokens.length > 0) {
     const donorNames = (donorCls.technologies || []).map((t) => t.name);
     const matched = tokens.filter((tok) => donorNames.some((n) => matchesToken(n, tok))).length;
-    const minOverlap = inheritCfg.min_token_overlap === undefined ? 0.5 : inheritCfg.min_token_overlap;
+    const minOverlap =
+      inheritCfg.min_token_overlap === undefined ? 0.5 : inheritCfg.min_token_overlap;
     if (matched / tokens.length < minOverlap) return null;
   }
 
@@ -76,10 +79,17 @@ function tryInherit(state, cfg, trigger) {
     ...fields,
     // Re-derive levels/basis from THIS session's evidence: a zero-tool
     // continuation shows the donor's hands_on techs as discussed here.
-    technologies: mergeEvidence(state, (donorCls.technologies || []).map((t) => ({ name: t.name, evidence: t.evidence }))),
+    technologies: mergeEvidence(
+      state,
+      (donorCls.technologies || []).map((t) => ({ name: t.name, evidence: t.evidence }))
+    ),
     continuation: true,
     confidence: Math.round(Math.max(0.1, (donorCls.confidence || 0.5) * 0.8) * 100) / 100,
-    rationale: `Inherited from session ${String(donor.session_id).slice(0, 8)} (continuation in the same project). ${donorCls.rationale || ''}`.slice(0, 400),
+    rationale:
+      `Inherited from session ${String(donor.session_id).slice(0, 8)} (continuation in the same project). ${donorCls.rationale || ''}`.slice(
+        0,
+        400
+      ),
     _meta: {
       model: null,
       classifier: 'inherited',

@@ -65,7 +65,9 @@ function ensureDirs() {
 // session_id comes from external input (hook payloads); sanitize before using
 // as a filename so a hostile payload cannot traverse paths.
 function safeSessionId(sid) {
-  return String(sid).replace(/[^A-Za-z0-9_.-]/g, '_').slice(0, 128);
+  return String(sid)
+    .replace(/[^A-Za-z0-9_.-]/g, '_')
+    .slice(0, 128);
 }
 
 function sessionFile(sid) {

@@ -26,44 +26,52 @@ const DEFAULTS = {
     // Growth & demand generation
     'outbound-campaign-operations': {
       name: 'Outbound lead generation & campaign operations',
-      gloss: 'Cold and campaign email operations: list building, sequencing, campaign setup, deliverability and send-rate management.',
+      gloss:
+        'Cold and campaign email operations: list building, sequencing, campaign setup, deliverability and send-rate management.',
       domain: 'Growth & demand generation',
     },
     'lead-data-sourcing': {
       name: 'Lead data sourcing & enrichment',
-      gloss: 'Sourcing, scraping, deduplicating, scoring and enriching prospect and company lists from registries, maps and databases.',
+      gloss:
+        'Sourcing, scraping, deduplicating, scoring and enriching prospect and company lists from registries, maps and databases.',
       domain: 'Growth & demand generation',
     },
     'seo-diagnostics': {
       name: 'SEO diagnostics & remediation',
-      gloss: 'Diagnosing indexing, ranking and organic-traffic problems; technical SEO fixes to robots, sitemaps, canonicals and redirects.',
+      gloss:
+        'Diagnosing indexing, ranking and organic-traffic problems; technical SEO fixes to robots, sitemaps, canonicals and redirects.',
       domain: 'Growth & demand generation',
     },
     'paid-search-campaigns': {
       name: 'Paid search campaign management',
-      gloss: 'Building and operating paid search advertising: campaign structure, ads, keywords, negatives, extensions and query analysis.',
+      gloss:
+        'Building and operating paid search advertising: campaign structure, ads, keywords, negatives, extensions and query analysis.',
       domain: 'Growth & demand generation',
     },
     // Revenue & billing operations
     'pricing-unit-economics': {
       name: 'Pricing & unit-economics analysis',
-      gloss: 'Analyzing usage, costs, margins and pricing tiers from production data to drive pricing and packaging decisions.',
+      gloss:
+        'Analyzing usage, costs, margins and pricing tiers from production data to drive pricing and packaging decisions.',
       domain: 'Revenue & billing operations',
     },
     'billing-systems': {
       name: 'Billing & subscription systems engineering',
-      gloss: 'Building and debugging payment, subscription and billing flows, including provider webhooks and fulfillment.',
+      gloss:
+        'Building and debugging payment, subscription and billing flows, including provider webhooks and fulfillment.',
       domain: 'Revenue & billing operations',
     },
     // AI & data engineering
     'llm-product-engineering': {
       name: 'LLM & AI product engineering',
-      gloss: 'Building product features on large language models: prompts, classification, generation pipelines and model integrations.',
+      gloss:
+        'Building product features on large language models: prompts, classification, generation pipelines and model integrations.',
       domain: 'AI & data engineering',
     },
     'data-pipeline-engineering': {
       name: 'Data & search pipeline engineering',
-      gloss: 'Building ingestion, transformation, migration and search indexing flows that move data between systems.',
+      gloss:
+        'Building ingestion, transformation, migration and search indexing flows that move data between systems.',
       domain: 'AI & data engineering',
     },
     // Business operations
@@ -75,12 +83,14 @@ const DEFAULTS = {
     // Platform & operations
     'developer-tooling': {
       name: 'Developer tooling & internal products',
-      gloss: 'Building developer-facing tools and internal products: CLIs, hooks, dashboards, installers and distribution.',
+      gloss:
+        'Building developer-facing tools and internal products: CLIs, hooks, dashboards, installers and distribution.',
       domain: 'Platform & operations',
     },
     'cloud-operations': {
       name: 'Cloud deployment & operations',
-      gloss: 'Deploying and operating cloud applications: releases, configuration, monitoring, incident response and infrastructure debugging.',
+      gloss:
+        'Deploying and operating cloud applications: releases, configuration, monitoring, incident response and infrastructure debugging.',
       domain: 'Platform & operations',
     },
   },
@@ -94,7 +104,10 @@ const DEFAULTS = {
 // entries win, defaults survive for ids the overlay doesn't mention.
 function mergeCatalog(defaults, overlay) {
   if (!overlay) return defaults;
-  const out = { ...defaults, version: overlay.version !== undefined ? overlay.version : defaults.version };
+  const out = {
+    ...defaults,
+    version: overlay.version !== undefined ? overlay.version : defaults.version,
+  };
   if (overlay.capabilities) out.catalog = { ...defaults.catalog, ...overlay.capabilities };
   if (overlay.cap_aliases) out.cap_aliases = { ...defaults.cap_aliases, ...overlay.cap_aliases };
   return out;

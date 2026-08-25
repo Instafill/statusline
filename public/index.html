@@ -1,33 +1,50 @@
 <!doctype html>
 <html lang="en" data-bs-theme="dark">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>statusline — Claude Code Capability Watcher</title>
-<link rel="stylesheet" href="/vendor/bootstrap.min.css">
-<link rel="stylesheet" href="/style.css">
-</head>
-<body>
-<nav class="navbar navbar-expand-md bg-body-secondary border-bottom sticky-top">
-  <div class="container-fluid">
-    <a class="navbar-brand fw-semibold" href="/sessions">⌁ statusline
-      <span class="fs-6 fw-normal text-secondary">local-only session observer</span></a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div class="collapse navbar-collapse" id="nav">
-      <ul class="navbar-nav ms-auto">
-        <li class="nav-item"><a class="nav-link" href="/sessions" data-tab="sessions">Sessions</a></li>
-        <li class="nav-item"><a class="nav-link" href="/projects" data-tab="projects">Projects</a></li>
-        <li class="nav-item"><a class="nav-link" href="/experience" data-tab="experience">Experience</a></li>
-        <li class="nav-item"><a class="nav-link" href="/egress" data-tab="egress">Egress log</a></li>
-        <li class="nav-item"><a class="nav-link" href="/settings" data-tab="settings">Settings</a></li>
-      </ul>
-    </div>
-  </div>
-</nav>
-<main id="main" class="container-xl py-4"><div class="empty">Loading…</div></main>
-<script src="/vendor/bootstrap.bundle.min.js"></script>
-<script type="module" src="/js/app.js"></script>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>statusline — Claude Code Capability Watcher</title>
+    <link rel="stylesheet" href="/vendor/bootstrap.min.css" />
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-md bg-body-secondary border-bottom sticky-top">
+      <div class="container-fluid">
+        <a class="navbar-brand fw-semibold" href="/sessions"
+          >⌁ statusline
+          <span class="fs-6 fw-normal text-secondary">local-only session observer</span></a
+        >
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#nav"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="nav">
+          <ul class="navbar-nav ms-auto">
+            <li class="nav-item">
+              <a class="nav-link" href="/sessions" data-tab="sessions">Sessions</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/projects" data-tab="projects">Projects</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/experience" data-tab="experience">Experience</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/egress" data-tab="egress">Egress log</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/settings" data-tab="settings">Settings</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+    <main id="main" class="container-xl py-4"><div class="empty">Loading…</div></main>
+    <script src="/vendor/bootstrap.bundle.min.js"></script>
+    <script type="module" src="/js/app.js"></script>
+  </body>
 </html>

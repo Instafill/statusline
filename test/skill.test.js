@@ -59,7 +59,9 @@ test('SKILL.md points at the helper and not at fragile inline node one-liners', 
   // `node -e` snippets do not survive PowerShell, which strips double quotes
   // out of native-command arguments. Anything with a Windows path or a JSON
   // string mangles silently, so the skill must not teach that pattern.
-  const offending = body.split(/\r?\n/).filter((l) => /node\s+-e/.test(l) && !/Never write inline/.test(l));
+  const offending = body
+    .split(/\r?\n/)
+    .filter((l) => /node\s+-e/.test(l) && !/Never write inline/.test(l));
   assert.deepStrictEqual(offending, [], 'no runnable `node -e` snippets in the skill');
 });
 
@@ -67,11 +69,29 @@ test('sl.js parses, and every documented subcommand exists', () => {
   const usage = spawnSync(process.execPath, [SL], { encoding: 'utf8' });
   assert.strictEqual(usage.status, 2, 'no arguments prints usage and exits 2');
   assert.strictEqual(usage.stderr.includes('Error'), false, usage.stderr);
-  for (const cmd of ['status', 'sessions', 'session', 'experience', 'projects', 'egress', 'repo', 'api']) {
+  for (const cmd of [
+    'status',
+    'sessions',
+    'session',
+    'experience',
+    'projects',
+    'egress',
+    'repo',
+    'api',
+  ]) {
     assert.ok(usage.stderr.includes(cmd), `usage should list ${cmd}`);
   }
   const md = fs.readFileSync(SKILL_MD, 'utf8');
-  for (const cmd of ['status', 'sessions', 'session', 'experience', 'projects', 'egress', 'repo', 'api']) {
+  for (const cmd of [
+    'status',
+    'sessions',
+    'session',
+    'experience',
+    'projects',
+    'egress',
+    'repo',
+    'api',
+  ]) {
     assert.ok(new RegExp('\\|\\s*`' + cmd + '\\b').test(md), `SKILL.md should document ${cmd}`);
   }
 });
@@ -93,12 +113,18 @@ test('sl.js reports a down watcher instead of crashing', () => {
 
 test('/api/status advertises the skill with a command that points at this checkout', () => {
   const { createApi } = require('../src/server/api');
-  const routes = createApi({ scheduler: { stats: () => ({ queued: [], running: false }) }, startedAt: new Date().toISOString() });
+  const routes = createApi({
+    scheduler: { stats: () => ({ queued: [], running: false }) },
+    startedAt: new Date().toISOString(),
+  });
   const skill = routes['GET /api/status']().skill;
 
   // The install offer on the landing page is only as good as this path — if it
   // drifts, every new user copies a command that links an empty directory.
-  assert.ok(fs.existsSync(path.join(skill.source, 'SKILL.md')), `source must hold SKILL.md: ${skill.source}`);
+  assert.ok(
+    fs.existsSync(path.join(skill.source, 'SKILL.md')),
+    `source must hold SKILL.md: ${skill.source}`
+  );
   assert.ok(skill.command.includes(process.platform === 'win32' ? 'Junction' : 'ln -s'));
   assert.match(skill.link, /[\\/]\.claude[\\/]skills[\\/]statusline$/);
   assert.strictEqual(typeof skill.installed, 'boolean');
@@ -113,7 +139,10 @@ test('a plugin install is never told to link the skill it already ships', () => 
   try {
     delete require.cache[require.resolve('../src/server/api')];
     const { createApi } = require('../src/server/api');
-    const routes = createApi({ scheduler: { stats: () => ({ queued: [], running: false }) }, startedAt: new Date().toISOString() });
+    const routes = createApi({
+      scheduler: { stats: () => ({ queued: [], running: false }) },
+      startedAt: new Date().toISOString(),
+    });
     const skill = routes['GET /api/status']().skill;
     assert.strictEqual(skill.installed, true);
     assert.strictEqual(skill.provided_by, 'plugin');
@@ -151,7 +180,13 @@ function fakeHome() {
 test('an unlinked clone reports no skill at all', () => {
   const { root } = fakeAgent('---\nname: statusline\n---\n');
   const state = skills.detect({ root, homeDir: fakeHome() });
-  assert.deepStrictEqual(state, { installed: false, via: 'none', sha: null, matches_agent: false, shadowed: false });
+  assert.deepStrictEqual(state, {
+    installed: false,
+    via: 'none',
+    sha: null,
+    matches_agent: false,
+    shadowed: false,
+  });
 });
 
 test('a linked skill tracks the checkout and is never stale', () => {
@@ -180,7 +215,11 @@ test('a copy that has fallen behind reports itself stale', () => {
 
   const state = skills.detect({ root, homeDir: home });
   assert.strictEqual(state.via, 'copied');
-  assert.strictEqual(state.installed, true, 'a stale skill is still installed — it just is not ours');
+  assert.strictEqual(
+    state.installed,
+    true,
+    'a stale skill is still installed — it just is not ours'
+  );
   assert.strictEqual(state.matches_agent, false);
 });
 
@@ -221,7 +260,10 @@ test('a plugin install flags an older personal copy left behind by a clone', () 
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'statusline-plug2-'));
   const root = path.join(base, 'plugins', 'cache', 'statusline', 'statusline', '0.3.2');
   fs.mkdirSync(path.join(root, 'skills', 'statusline'), { recursive: true });
-  fs.writeFileSync(path.join(root, 'skills', 'statusline', 'SKILL.md'), '---\nname: statusline\n---\nnew\n');
+  fs.writeFileSync(
+    path.join(root, 'skills', 'statusline', 'SKILL.md'),
+    '---\nname: statusline\n---\nnew\n'
+  );
   fs.writeFileSync(path.join(root, 'skills', 'statusline', 'sl.js'), '// helper\n');
 
   const home = fakeHome();
@@ -239,7 +281,13 @@ test('what the uploader sends carries no paths — only the verdict', () => {
   // (rule 2), so the upload projection is built field by field and this test is
   // what keeps it that way when someone extends detect().
   const sent = skills.forUpload();
-  assert.deepStrictEqual(Object.keys(sent).sort(), ['installed', 'matches_agent', 'sha', 'shadowed', 'via']);
+  assert.deepStrictEqual(Object.keys(sent).sort(), [
+    'installed',
+    'matches_agent',
+    'sha',
+    'shadowed',
+    'via',
+  ]);
   for (const [k, v] of Object.entries(sent)) {
     if (typeof v !== 'string') continue;
     assert.ok(!/[\\/]/.test(v), `${k} must not carry anything path-shaped: ${v}`);

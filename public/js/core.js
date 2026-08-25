@@ -70,12 +70,18 @@ export function cost(usd) {
   return `$${usd.toFixed(2)}`;
 }
 
-export const csv = (s) => String(s || '').split(',').map((x) => x.trim()).filter(Boolean);
+export const csv = (s) =>
+  String(s || '')
+    .split(',')
+    .map((x) => x.trim())
+    .filter(Boolean);
 
 /* ----------------------------------- dom ---------------------------------- */
 
 // Wire handlers after an innerHTML swap: on('[data-label]', 'click', (el) => …).
 // Matches zero or more elements, so callers never need an existence check.
 export function on(selector, event, handler, root = document) {
-  root.querySelectorAll(selector).forEach((el) => el.addEventListener(event, (ev) => handler(el, ev)));
+  root
+    .querySelectorAll(selector)
+    .forEach((el) => el.addEventListener(event, (ev) => handler(el, ev)));
 }

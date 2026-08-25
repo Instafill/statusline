@@ -16,17 +16,20 @@ const log = require('../util/log');
 
 function probeHealth(port, timeoutMs = 1500) {
   return new Promise((resolve) => {
-    const req = http.get({ host: '127.0.0.1', port, path: '/api/health', timeout: timeoutMs }, (res) => {
-      let data = '';
-      res.on('data', (c) => (data += c));
-      res.on('end', () => {
-        try {
-          resolve(JSON.parse(data).app === 'statusline');
-        } catch (e) {
-          resolve(false);
-        }
-      });
-    });
+    const req = http.get(
+      { host: '127.0.0.1', port, path: '/api/health', timeout: timeoutMs },
+      (res) => {
+        let data = '';
+        res.on('data', (c) => (data += c));
+        res.on('end', () => {
+          try {
+            resolve(JSON.parse(data).app === 'statusline');
+          } catch (e) {
+            resolve(false);
+          }
+        });
+      }
+    );
     req.on('error', () => resolve(false));
     req.on('timeout', () => {
       req.destroy();
@@ -65,10 +68,16 @@ async function start() {
   // Single instance.
   const lock = readJson(paths.lock, null);
   if (lock && (await probeHealth(lock.port || cfg.port))) {
-    console.error(`statusline watcher already running (pid ${lock.pid}, http://127.0.0.1:${lock.port || cfg.port}). Exiting.`);
+    console.error(
+      `statusline watcher already running (pid ${lock.pid}, http://127.0.0.1:${lock.port || cfg.port}). Exiting.`
+    );
     process.exit(1);
   }
-  writeJsonAtomic(paths.lock, { pid: process.pid, port: cfg.port, started_at: new Date().toISOString() });
+  writeJsonAtomic(paths.lock, {
+    pid: process.pid,
+    port: cfg.port,
+    started_at: new Date().toISOString(),
+  });
 
   const startedAt = new Date().toISOString();
 
@@ -131,7 +140,9 @@ async function start() {
       teamConfig.markApplied();
       log.info(
         `team config v${current}: re-derived ${updated} classified sessions` +
-          (applyWatermark ? `; marked ${staled} stale for re-classification (watermark ${watermark})` : '')
+          (applyWatermark
+            ? `; marked ${staled} stale for re-classification (watermark ${watermark})`
+            : '')
       );
     } catch (e) {
       log.error(`table rederive failed: ${e.message}`);
@@ -141,7 +152,8 @@ async function start() {
   const drain = () => {
     try {
       const res = spool.drainOnce();
-      if (res.ingested > 0) log.debug(`ingested ${res.ingested} events (${res.sessions.length} sessions)`);
+      if (res.ingested > 0)
+        log.debug(`ingested ${res.ingested} events (${res.sessions.length} sessions)`);
       for (const sid of res.sessions) {
         scheduler.considerAfterEvent(sid);
         if (uploader) uploader.markDirty(sid);
@@ -158,7 +170,9 @@ async function start() {
   for (const s of sessions.listSessions()) {
     if (s.classification_state === 'pending') {
       sessions.updateSession(s.session_id, { classification_state: 'stale' });
-      log.warn(`session ${s.session_id} was stuck pending (watcher died mid-classification); marked stale`);
+      log.warn(
+        `session ${s.session_id} was stuck pending (watcher died mid-classification); marked stale`
+      );
     }
   }
 
@@ -197,7 +211,9 @@ async function start() {
   const routes = createApi({ scheduler, startedAt });
   await createServer(cfg, routes);
   log.info(`statusline watcher running — UI at http://127.0.0.1:${cfg.port} (data: ${paths.home})`);
-  console.log(`\n  statusline is watching Claude Code sessions.\n  UI:   http://127.0.0.1:${cfg.port}\n  Data: ${paths.home}\n  Stop: Ctrl+C\n`);
+  console.log(
+    `\n  statusline is watching Claude Code sessions.\n  UI:   http://127.0.0.1:${cfg.port}\n  Data: ${paths.home}\n  Stop: Ctrl+C\n`
+  );
 
   // A clone that was pulled but never re-installed would silently miss whatever
   // hook events were added since. Surface it once, at the only moment anyone is
@@ -206,7 +222,9 @@ async function start() {
     const drift = require('../installer').status().drift;
     if (drift) {
       log.warn(`install drift: ${drift}`);
-      console.log(`  ! Install is out of date: ${drift}.\n    Run "node src/cli.js install" to refresh.\n`);
+      console.log(
+        `  ! Install is out of date: ${drift}.\n    Run "node src/cli.js install" to refresh.\n`
+      );
     }
   } catch (e) {
     log.warn(`could not check install drift: ${e.message}`);

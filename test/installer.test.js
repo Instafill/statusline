@@ -14,7 +14,10 @@ const installer = require('../src/installer');
 const FIXTURE = path.join(__dirname, 'fixtures', 'settings.pixel.json');
 
 function freshSettingsCopy() {
-  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'statusline-set-')), 'settings.json');
+  const file = path.join(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'statusline-set-')),
+    'settings.json'
+  );
   fs.copyFileSync(FIXTURE, file);
   return file;
 }
@@ -22,14 +25,17 @@ function freshSettingsCopy() {
 test('exactly the events the fold consumes are registered', () => {
   // Dropping any of these silently stops capture for that event type.
   for (const event of ['UserPromptSubmit', 'Stop', 'PostToolUse', 'SessionStart', 'SessionEnd']) {
-    assert.ok(installer.ENTRIES.some((e) => e.event === event), `${event} hook missing`);
+    assert.ok(
+      installer.ENTRIES.some((e) => e.event === event),
+      `${event} hook missing`
+    );
   }
   // Notification was only ever registered for the attention beep, which now
   // ships as its own plugin. Nothing in the fold reads it, so forwarding it
   // spooled an event no one consumed on every permission prompt and idle nudge.
   assert.ok(
     !installer.ENTRIES.some((e) => e.event === 'Notification'),
-    'Notification is the beep plugin\'s to register, not ours'
+    "Notification is the beep plugin's to register, not ours"
   );
 });
 
@@ -56,7 +62,11 @@ test('installing prunes our own entries this version no longer registers', () =>
     'node C:/other/vendor-hook.js',
     'a third-party hook on the same event is untouched'
   );
-  assert.strictEqual(installer.status(file).fullyInstalled, true, 'our real entries survive the prune');
+  assert.strictEqual(
+    installer.status(file).fullyInstalled,
+    true,
+    'our real entries survive the prune'
+  );
 });
 
 test('pruning never touches a group we do not own', () => {
@@ -67,7 +77,8 @@ test('pruning never touches a group we do not own', () => {
   for (const event of Object.keys(before.hooks)) {
     const beforeArr = before.hooks[event];
     assert.deepStrictEqual(
-      after.hooks[event].slice(0, beforeArr.length), beforeArr,
+      after.hooks[event].slice(0, beforeArr.length),
+      beforeArr,
       `${event} third-party groups altered by the prune`
     );
   }
@@ -89,7 +100,11 @@ test('install appends only statusline entries and preserves everything else', ()
   for (const event of Object.keys(before.hooks)) {
     const beforeArr = before.hooks[event];
     const afterArr = after.hooks[event];
-    assert.deepStrictEqual(afterArr.slice(0, beforeArr.length), beforeArr, `${event} groups altered`);
+    assert.deepStrictEqual(
+      afterArr.slice(0, beforeArr.length),
+      beforeArr,
+      `${event} groups altered`
+    );
   }
   // Our entries present.
   const st = installer.status(file);
@@ -120,7 +135,10 @@ test('uninstall restores the original object exactly', () => {
 });
 
 test('install creates settings file when absent, uninstall leaves no hooks key', () => {
-  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'statusline-set-')), 'settings.json');
+  const file = path.join(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'statusline-set-')),
+    'settings.json'
+  );
   installer.install(file);
   const after = JSON.parse(fs.readFileSync(file, 'utf8'));
   assert.ok(after.hooks.UserPromptSubmit.length === 1);
@@ -130,7 +148,10 @@ test('install creates settings file when absent, uninstall leaves no hooks key',
 });
 
 test('install refuses to touch corrupt settings', () => {
-  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'statusline-set-')), 'settings.json');
+  const file = path.join(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'statusline-set-')),
+    'settings.json'
+  );
   fs.writeFileSync(file, '{ not json');
   assert.throws(() => installer.install(file), /not valid JSON/);
   assert.strictEqual(fs.readFileSync(file, 'utf8'), '{ not json');

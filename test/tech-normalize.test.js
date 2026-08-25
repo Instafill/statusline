@@ -5,7 +5,12 @@
 // validation that guards the server→client trust boundary.
 const { test } = require('node:test');
 const assert = require('node:assert');
-const { DEFAULTS, createNormalizer, mergeTables, validateOverlay } = require('../src/tech-normalize');
+const {
+  DEFAULTS,
+  createNormalizer,
+  mergeTables,
+  validateOverlay,
+} = require('../src/tech-normalize');
 
 const norm = createNormalizer(DEFAULTS);
 
@@ -29,7 +34,11 @@ test('display-form variants collapse to canonical capabilities', () => {
     ['Postgres', ['postgresql']],
   ];
   for (const [input, expected] of cases) {
-    assert.deepStrictEqual(norm.canonicalsOf(input), expected, `canonicalsOf(${JSON.stringify(input)})`);
+    assert.deepStrictEqual(
+      norm.canonicalsOf(input),
+      expected,
+      `canonicalsOf(${JSON.stringify(input)})`
+    );
   }
 });
 

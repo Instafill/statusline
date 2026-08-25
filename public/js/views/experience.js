@@ -8,7 +8,8 @@ export async function renderExperience(el) {
   const data = await api('/api/experience');
   const docs = data.practitioners || [];
   if (!docs.length) {
-    el.innerHTML = '<div class="empty">No experience yet — it appears once sessions are classified into projects.</div>';
+    el.innerHTML =
+      '<div class="empty">No experience yet — it appears once sessions are classified into projects.</div>';
     return;
   }
   el.innerHTML = docs.map(experienceDoc).join('');

@@ -24,7 +24,15 @@ function mkState(over = {}) {
     last_event_at: '2026-08-01T11:00:00.000Z',
     primary_cwd: 'C:\\proj\\demo',
     counts: { prompts: 1, turns: 1, tool_uses: 0, subagent_events: 0, events: 2 },
-    tools: { by_name: {}, bash_commands: [], files_touched: [], extensions: {}, mcp_servers: [], web: { fetch_domains: [], search_queries: [] }, dependencies_observed: [] },
+    tools: {
+      by_name: {},
+      bash_commands: [],
+      files_touched: [],
+      extensions: {},
+      mcp_servers: [],
+      web: { fetch_domains: [], search_queries: [] },
+      dependencies_observed: [],
+    },
     ...over,
   };
 }
@@ -39,7 +47,11 @@ test('resolveId chases aliases, guards cycles, and rejects unknown ids', () => {
   assert.strictEqual(caps.resolveId(tables, 'old'), 'current');
   assert.strictEqual(caps.resolveId(tables, 'CURRENT'), 'current', 'case-insensitive input');
   assert.strictEqual(caps.resolveId(tables, 'nope'), null);
-  assert.strictEqual(caps.resolveId(tables, 'loop_a'), null, 'alias cycle degrades to null, never hangs');
+  assert.strictEqual(
+    caps.resolveId(tables, 'loop_a'),
+    null,
+    'alias cycle degrades to null, never hangs'
+  );
 });
 
 test('activeEntries excludes retired (aliased) ids and sorts by id', () => {
@@ -64,7 +76,11 @@ test('overlay capability sections: injection charsets enforced entry-wise', () =
   const v = validateOverlay({
     version: 3,
     capabilities: {
-      'good-id': { name: 'Good Name', gloss: 'A fine gloss, with punctuation: yes.', domain: 'Growth' },
+      'good-id': {
+        name: 'Good Name',
+        gloss: 'A fine gloss, with punctuation: yes.',
+        domain: 'Growth',
+      },
       'bad-gloss': { name: 'Ok', gloss: 'has <angle> brackets' },
       'bad-name': { name: 'Bad `tick`', gloss: 'x' },
       'no-name': { gloss: 'x' },
@@ -81,7 +97,11 @@ test('overlay capability sections: injection charsets enforced entry-wise', () =
 });
 
 test('invalid watermark and unknown sections: dropped, validation still passes (version-skew safety)', () => {
-  const v = validateOverlay({ version: 4, reclassify_capabilities_before: 'not a date', future_section: { a: 1 } });
+  const v = validateOverlay({
+    version: 4,
+    reclassify_capabilities_before: 'not a date',
+    future_section: { a: 1 },
+  });
   assert.strictEqual(v.ok, true);
   assert.strictEqual('reclassify_capabilities_before' in v.value, false);
   assert.strictEqual('future_section' in v.value, false);
@@ -96,11 +116,22 @@ test('zero-turn sessions derive no capabilities; raw untouched and reversible', 
   });
   deriveBusinessCapabilities(s);
   assert.deepStrictEqual(s.classification.business_capabilities, []);
-  assert.deepStrictEqual(s.classification.business_capabilities_raw, ['process-automation'], 'raw untouched');
+  assert.deepStrictEqual(
+    s.classification.business_capabilities_raw,
+    ['process-automation'],
+    'raw untouched'
+  );
   s.counts.turns = 1;
   deriveBusinessCapabilities(s);
-  assert.strictEqual(s.classification.business_capabilities[0].id, 'process-automation', 'refold restores the claim');
-  assert.ok(s.classification.business_capabilities[0].domain, 'derived entries carry display metadata');
+  assert.strictEqual(
+    s.classification.business_capabilities[0].id,
+    'process-automation',
+    'refold restores the claim'
+  );
+  assert.ok(
+    s.classification.business_capabilities[0].domain,
+    'derived entries carry display metadata'
+  );
 });
 
 test('legacy classifications get an empty raw twin — nothing is fabricated', () => {
@@ -113,19 +144,34 @@ test('legacy classifications get an empty raw twin — nothing is fabricated', (
 test('unknown ids survive in raw and resurrect when the catalog gains the entry', () => {
   const s = mkState({ classification: { business_capabilities_raw: ['made-up-capability'] } });
   deriveBusinessCapabilities(s);
-  assert.deepStrictEqual(s.classification.business_capabilities, [], 'unknown id filtered from derived');
+  assert.deepStrictEqual(
+    s.classification.business_capabilities,
+    [],
+    'unknown id filtered from derived'
+  );
   const res = teamConfig.store({
     version: 7,
-    capabilities: { 'made-up-capability': { name: 'Made Up Capability', gloss: 'Now it exists.', domain: 'Test' } },
+    capabilities: {
+      'made-up-capability': { name: 'Made Up Capability', gloss: 'Now it exists.', domain: 'Test' },
+    },
   });
   assert.strictEqual(res.changed, true);
   deriveBusinessCapabilities(s);
-  assert.strictEqual(s.classification.business_capabilities[0].id, 'made-up-capability', 'catalog addition is retroactive');
+  assert.strictEqual(
+    s.classification.business_capabilities[0].id,
+    'made-up-capability',
+    'catalog addition is retroactive'
+  );
 });
 
 test('catalog alias re-derives history with zero classifier calls', () => {
-  const s = mkState({ classification: { business_capabilities_raw: ['made-up-capability', 'process-automation'] } });
-  const res = teamConfig.store({ version: 8, cap_aliases: { 'made-up-capability': 'process-automation' } });
+  const s = mkState({
+    classification: { business_capabilities_raw: ['made-up-capability', 'process-automation'] },
+  });
+  const res = teamConfig.store({
+    version: 8,
+    cap_aliases: { 'made-up-capability': 'process-automation' },
+  });
   assert.strictEqual(res.changed, true);
   deriveBusinessCapabilities(s);
   const ids = s.classification.business_capabilities.map((c) => c.id);
@@ -149,7 +195,13 @@ test('stripContent preserves both capability fields (a strip regression would si
     session_id: 'x',
     prompts: [{ text: 'secret' }],
     classification: {
-      business_capabilities: [{ id: 'process-automation', name: 'Business process analysis & automation', domain: 'Business operations' }],
+      business_capabilities: [
+        {
+          id: 'process-automation',
+          name: 'Business process analysis & automation',
+          domain: 'Business operations',
+        },
+      ],
       business_capabilities_raw: ['process-automation'],
     },
   };
@@ -163,17 +215,32 @@ test('stripContent preserves both capability fields (a strip regression would si
 
 test('unresolved ids are recorded in business_capabilities_dropped and clear when the catalog catches up', () => {
   const s = mkState({
-    classification: { business_capabilities_raw: ['wiki-editorial-work', 'process-automation', 'Bad Id!', 'wiki-editorial-work'] },
+    classification: {
+      business_capabilities_raw: [
+        'wiki-editorial-work',
+        'process-automation',
+        'Bad Id!',
+        'wiki-editorial-work',
+      ],
+    },
   });
   deriveBusinessCapabilities(s);
-  assert.deepStrictEqual(s.classification.business_capabilities_dropped, ['wiki-editorial-work'], 'well-formed unknown ids only, deduped; malformed junk excluded');
+  assert.deepStrictEqual(
+    s.classification.business_capabilities_dropped,
+    ['wiki-editorial-work'],
+    'well-formed unknown ids only, deduped; malformed junk excluded'
+  );
   assert.strictEqual(s.classification.business_capabilities[0].id, 'process-automation');
   teamConfig.store({
     version: 9,
     capabilities: { 'wiki-editorial-work': { name: 'Wiki Editorial Work', domain: 'Test' } },
   });
   deriveBusinessCapabilities(s);
-  assert.deepStrictEqual(s.classification.business_capabilities_dropped, [], 'catalog addition empties the gap sensor on refold');
+  assert.deepStrictEqual(
+    s.classification.business_capabilities_dropped,
+    [],
+    'catalog addition empties the gap sensor on refold'
+  );
   assert.ok(s.classification.business_capabilities.some((c) => c.id === 'wiki-editorial-work'));
 });
 

@@ -20,7 +20,13 @@ const CUSTOM = {
   v: 1,
   port: 45999,
   idle_minutes: 3,
-  upload: { enabled: true, endpoint: 'https://team.example.net', token: 'precious-credential', debounce_ms: 10000, include_content: true },
+  upload: {
+    enabled: true,
+    endpoint: 'https://team.example.net',
+    token: 'precious-credential',
+    debounce_ms: 10000,
+    include_content: true,
+  },
 };
 
 test('a UTF-8 BOM does not hide the config', () => {
@@ -38,7 +44,11 @@ test('an unparseable config is left ON DISK and never replaced by defaults', () 
   fs.writeFileSync(paths.config, broken, 'utf8');
   const cfg = config.load(true);
   assert.strictEqual(cfg.port, 45817, 'runs on defaults in memory');
-  assert.strictEqual(fs.readFileSync(paths.config, 'utf8'), broken, 'the operator keeps their file and can fix it');
+  assert.strictEqual(
+    fs.readFileSync(paths.config, 'utf8'),
+    broken,
+    'the operator keeps their file and can fix it'
+  );
 });
 
 test('a missing config is seeded with defaults (first run)', () => {
@@ -62,6 +72,10 @@ test('save merges into the existing file without dropping unrelated keys', () =>
   config.load(true);
   const saved = config.save({ upload: { endpoint: 'https://moved.example.net' } });
   assert.strictEqual(saved.upload.endpoint, 'https://moved.example.net');
-  assert.strictEqual(saved.upload.token, 'precious-credential', 'credential survives an endpoint change');
+  assert.strictEqual(
+    saved.upload.token,
+    'precious-credential',
+    'credential survives an endpoint change'
+  );
   assert.strictEqual(saved.port, 45999, 'unrelated settings survive');
 });
