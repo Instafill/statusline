@@ -18,12 +18,6 @@ const { ensureDirs, paths } = require('./paths');
 async function main() {
   const [cmd, arg, arg2] = process.argv.slice(2);
   ensureDirs();
-  // Whichever copy is being run is the one the logon launcher should resolve.
-  try {
-    require('./agent-root').recordAgentRoot();
-  } catch (e) {
-    /* a read-only or unwritable data dir must not break the command itself */
-  }
 
   switch (cmd) {
     case 'install': {
@@ -39,6 +33,17 @@ async function main() {
         break;
       }
       const res = installer.install();
+      // Recording here is what points `autostart`'s launcher at this checkout.
+      // `autostart` records it as well, and a plugin install records it from
+      // hook-forward, since Claude Code owns that directory and never runs this
+      // command. The hooks are already registered above, so a failed record is
+      // worth a line of output rather than an abort.
+      try {
+        require('./agent-root').recordAgentRoot();
+      } catch (e) {
+        console.log(`Warning: could not record the agent location (${e.message}).`);
+        console.log('Run "node src/cli.js autostart" or the watcher will not start at login.');
+      }
       console.log(
         `Installed ${res.added.length} hook entr${res.added.length === 1 ? 'y' : 'ies'} (${res.skipped.length} already present) in ${res.settingsPath}`
       );

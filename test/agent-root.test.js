@@ -71,6 +71,48 @@ test('the launcher lives in the data dir and starts whatever root is recorded', 
   assert.match(out, /started:start/);
 });
 
+test('a read-only command does not repoint the logon launcher', () => {
+  // Only installing decides which copy the login task resolves. Running a
+  // command from a checkout leaves that record alone.
+  const installed = path.join(os.tmpdir(), 'statusline-installed-copy');
+  recordAgentRoot(installed);
+
+  execFileSync(process.execPath, [path.join(AGENT_ROOT, 'src', 'cli.js'), 'recompute'], {
+    encoding: 'utf8',
+    env: { ...process.env, STATUSLINE_HOME: TESTHOME },
+  });
+
+  assert.strictEqual(readAgentRoot().root, installed);
+  recordAgentRoot();
+});
+
+test(
+  'install reports an unwritable agent record and still finishes',
+  { skip: process.platform === 'win32' },
+  () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'statusline-inst-home-'));
+    const data = fs.mkdtempSync(path.join(os.tmpdir(), 'statusline-inst-data-'));
+
+    // Claude Code owns ~/.claude and the installer expects to find it.
+    fs.mkdirSync(path.join(home, '.claude'));
+
+    // A directory where the record file belongs: readable as absent, unwritable.
+    fs.mkdirSync(path.join(data, 'agent.json'));
+
+    const out = execFileSync(
+      process.execPath,
+      [path.join(AGENT_ROOT, 'src', 'cli.js'), 'install'],
+      {
+        encoding: 'utf8',
+        env: { ...process.env, HOME: home, STATUSLINE_HOME: data },
+      }
+    );
+
+    assert.match(out, /Installed \d+ hook/, 'the hooks still went in');
+    assert.match(out, /could not record the agent location/i);
+  }
+);
+
 test('a recorded root that no longer exists fails loudly instead of hanging', () => {
   writeLauncher();
   recordAgentRoot(path.join(os.tmpdir(), 'statusline-does-not-exist'));
