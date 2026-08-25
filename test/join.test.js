@@ -38,13 +38,16 @@ before(async () => {
 after(() => stub.close());
 
 test('join enrolls, persists the credential, and egress-logs the call', async () => {
-  respond = (body) => [200, {
-    ok: true,
-    endpoint: base,
-    machine_token: 'issued-machine-token',
-    practitioner_id: 'prac_ab12cd34ef',
-    org: { id: 'org_testco', name: 'TestCo' },
-  }];
+  respond = (_body) => [
+    200,
+    {
+      ok: true,
+      endpoint: base,
+      machine_token: 'issued-machine-token',
+      practitioner_id: 'prac_ab12cd34ef',
+      org: { id: 'org_testco', name: 'TestCo' },
+    },
+  ];
   const { join } = require('../src/upload/join');
   const r = await join(`${base}/`, 'enroll-code-1234567890abcdef');
 
@@ -66,7 +69,11 @@ test('join enrolls, persists the credential, and egress-logs the call', async ()
   assert.strictEqual(ingestUrl(cfg.upload.endpoint), `${base}/v1/ingest`);
 
   // Egress trail: kind:"enroll", outcome ok.
-  const lines = fs.readFileSync(path.join(TESTHOME, 'egress.jsonl'), 'utf8').trim().split('\n').map(JSON.parse);
+  const lines = fs
+    .readFileSync(path.join(TESTHOME, 'egress.jsonl'), 'utf8')
+    .trim()
+    .split('\n')
+    .map(JSON.parse);
   const entry = lines.find((l) => l.kind === 'enroll');
   assert.strictEqual(entry.outcome, 'ok');
   // host, not hostname: the privacy log names the exact endpoint contacted.
@@ -76,11 +83,18 @@ test('join enrolls, persists the credential, and egress-logs the call', async ()
 test('a refused enrollment logs the failure and leaves uploads untouched', async () => {
   respond = () => [400, { error: 'invalid, expired or already-used enroll code' }];
   const { join } = require('../src/upload/join');
-  await assert.rejects(() => join(base, 'enroll-code-1234567890abcdef'), /enrollment refused \(400\)/);
+  await assert.rejects(
+    () => join(base, 'enroll-code-1234567890abcdef'),
+    /enrollment refused \(400\)/
+  );
 
   const cfg = JSON.parse(fs.readFileSync(path.join(TESTHOME, 'config.json'), 'utf8'));
   assert.strictEqual(cfg.upload.token, 'issued-machine-token', 'previous credential untouched');
-  const lines = fs.readFileSync(path.join(TESTHOME, 'egress.jsonl'), 'utf8').trim().split('\n').map(JSON.parse);
+  const lines = fs
+    .readFileSync(path.join(TESTHOME, 'egress.jsonl'), 'utf8')
+    .trim()
+    .split('\n')
+    .map(JSON.parse);
   assert.strictEqual(lines.filter((l) => l.kind === 'enroll').length, 2);
   assert.strictEqual(lines[lines.length - 1].outcome, 'http_400');
 });

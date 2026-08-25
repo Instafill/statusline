@@ -4,7 +4,6 @@
 // classifier run, which is itself egress-logged).
 const fs = require('fs');
 const os = require('os');
-const path = require('path');
 const crypto = require('crypto');
 const { paths } = require('../paths');
 const agentRoot = require('../agent-root');
@@ -66,7 +65,12 @@ function createApi({ scheduler, startedAt }) {
     return map;
   };
 
-  routes['GET /api/health'] = () => ({ ok: true, pid: process.pid, started_at: startedAt, app: 'statusline' });
+  routes['GET /api/health'] = () => ({
+    ok: true,
+    pid: process.pid,
+    started_at: startedAt,
+    app: 'statusline',
+  });
 
   // The /statusline skill is opt-in for a clone install (link a directory), so
   // the only way to know whether someone has it is to look. Existence only —
@@ -87,13 +91,27 @@ function createApi({ scheduler, startedAt }) {
     const source = skills.shippedDir(agentRoot.AGENT_ROOT);
     const link = skills.personalDir(os.homedir());
     if (state.via === 'plugin') {
-      return { ...state, installed: true, provided_by: 'plugin', source, link: null, command: null, shell: null };
+      return {
+        ...state,
+        installed: true,
+        provided_by: 'plugin',
+        source,
+        link: null,
+        command: null,
+        shell: null,
+      };
     }
     const command =
       process.platform === 'win32'
         ? `New-Item -ItemType Directory -Force "$env:USERPROFILE\\.claude\\skills" > $null; New-Item -ItemType Junction -Path "$env:USERPROFILE\\.claude\\skills\\statusline" -Target "${source}"`
         : `mkdir -p ~/.claude/skills && ln -s "${source}" ~/.claude/skills/statusline`;
-    return { ...state, source, link, command, shell: process.platform === 'win32' ? 'PowerShell' : 'shell' };
+    return {
+      ...state,
+      source,
+      link,
+      command,
+      shell: process.platform === 'win32' ? 'PowerShell' : 'shell',
+    };
   }
 
   routes['GET /api/status'] = () => {
@@ -162,7 +180,12 @@ function createApi({ scheduler, startedAt }) {
         })
       : [];
     const text = buildDigest({ ...s, assistant_excerpts: excerpts }, cfg.digest);
-    return { text, chars: text.length, sha256: crypto.createHash('sha256').update(text).digest('hex'), note: 'preview only — nothing was sent' };
+    return {
+      text,
+      chars: text.length,
+      sha256: crypto.createHash('sha256').update(text).digest('hex'),
+      note: 'preview only — nothing was sent',
+    };
   };
 
   routes['POST /api/sessions/:id/classify'] = (params) => {
@@ -179,7 +202,8 @@ function createApi({ scheduler, startedAt }) {
   };
 
   routes['POST /api/sessions/:id/overrides'] = (params, body) => {
-    if (typeof body.field_overrides !== 'object') return { _status: 400, error: 'field_overrides object required' };
+    if (typeof body.field_overrides !== 'object')
+      return { _status: 400, error: 'field_overrides object required' };
     grouping.setSessionOverrides(params.id, body.field_overrides);
     return { ok: true };
   };
@@ -204,7 +228,8 @@ function createApi({ scheduler, startedAt }) {
   };
 
   routes['POST /api/projects/:id/rename'] = (params, body) => {
-    if (typeof body.name !== 'string' || !body.name.trim()) return { _status: 400, error: 'name required' };
+    if (typeof body.name !== 'string' || !body.name.trim())
+      return { _status: 400, error: 'name required' };
     grouping.renameProject(params.id, body.name.trim());
     return { ok: true };
   };
@@ -234,7 +259,8 @@ function createApi({ scheduler, startedAt }) {
   const TOKEN_MASK = '__enrolled__';
   routes['GET /api/config'] = () => {
     const cfg = config.load();
-    if (cfg.upload && cfg.upload.token) return { ...cfg, upload: { ...cfg.upload, token: TOKEN_MASK } };
+    if (cfg.upload && cfg.upload.token)
+      return { ...cfg, upload: { ...cfg.upload, token: TOKEN_MASK } };
     return cfg;
   };
   routes['POST /api/config'] = (params, body) => {
@@ -242,7 +268,9 @@ function createApi({ scheduler, startedAt }) {
       body = { ...body, upload: { ...body.upload, token: config.load().upload.token } };
     }
     const saved = config.save(body);
-    return saved.upload && saved.upload.token ? { ...saved, upload: { ...saved.upload, token: TOKEN_MASK } } : saved;
+    return saved.upload && saved.upload.token
+      ? { ...saved, upload: { ...saved.upload, token: TOKEN_MASK } }
+      : saved;
   };
 
   return routes;

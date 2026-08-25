@@ -18,7 +18,12 @@ const HOOK_COMMAND = `node "${hookScript}"`;
 const ENTRIES = [
   { event: 'UserPromptSubmit', matcher: undefined, async: true, timeout: 10 },
   { event: 'Stop', matcher: undefined, async: true, timeout: 10 },
-  { event: 'PostToolUse', matcher: 'Bash|Edit|Write|MultiEdit|NotebookEdit|Read|WebFetch|WebSearch', async: true, timeout: 10 },
+  {
+    event: 'PostToolUse',
+    matcher: 'Bash|Edit|Write|MultiEdit|NotebookEdit|Read|WebFetch|WebSearch',
+    async: true,
+    timeout: 10,
+  },
   { event: 'PostToolUse', matcher: 'mcp__.*', async: true, timeout: 10 },
   { event: 'SessionStart', matcher: undefined, async: true, timeout: 10 },
   { event: 'SessionEnd', matcher: undefined, async: false, timeout: 3 },
@@ -57,7 +62,9 @@ function isOurHook(hook, manifestCommand) {
 }
 
 function groupHasOurs(group, manifestCommand) {
-  return Array.isArray(group && group.hooks) && group.hooks.some((h) => isOurHook(h, manifestCommand));
+  return (
+    Array.isArray(group && group.hooks) && group.hooks.some((h) => isOurHook(h, manifestCommand))
+  );
 }
 
 // Identity of a hook group: the event plus its matcher, encoded so that no
@@ -67,7 +74,7 @@ function groupKey(event, matcher) {
 }
 
 function readSettingsStrict(settingsPath) {
-  let raw = null;
+  let raw;
   try {
     raw = fs.readFileSync(settingsPath, 'utf8');
   } catch (e) {
@@ -78,7 +85,8 @@ function readSettingsStrict(settingsPath) {
     obj = JSON.parse(raw);
   } catch (e) {
     throw new Error(
-      `${settingsPath} is not valid JSON (${e.message}). Refusing to touch it — fix the file manually first.`
+      `${settingsPath} is not valid JSON (${e.message}). Refusing to touch it — fix the file manually first.`,
+      { cause: e }
     );
   }
   if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) {
@@ -105,7 +113,8 @@ function writeSettingsVerified(settingsPath, obj, backupFile, raw) {
     throw new Error(
       `Post-write verification of ${settingsPath} failed and the previous content was restored` +
         (backupFile ? ` (backup also at ${backupFile})` : '') +
-        `: ${e.message}`
+        `: ${e.message}`,
+      { cause: e }
     );
   }
 }
@@ -126,7 +135,9 @@ function install(settingsPath = claudeSettings) {
   for (const entry of ENTRIES) {
     if (!Array.isArray(obj.hooks[entry.event])) obj.hooks[entry.event] = [];
     const arr = obj.hooks[entry.event];
-    const group = arr.find((g) => g && g.matcher === entry.matcher && groupHasOurs(g, HOOK_COMMAND));
+    const group = arr.find(
+      (g) => g && g.matcher === entry.matcher && groupHasOurs(g, HOOK_COMMAND)
+    );
     if (!group) {
       arr.push(buildGroup(entry));
       added.push(entry);
@@ -141,7 +152,8 @@ function install(settingsPath = claudeSettings) {
     let changed = false;
     group.hooks = group.hooks.map((h) => {
       if (!isOurHook(h, HOOK_COMMAND)) return h;
-      if (h.command === fresh.command && h.timeout === fresh.timeout && !!h.async === !!fresh.async) return h;
+      if (h.command === fresh.command && h.timeout === fresh.timeout && !!h.async === !!fresh.async)
+        return h;
       changed = true;
       return { ...fresh };
     });
@@ -182,7 +194,10 @@ function install(settingsPath = claudeSettings) {
     signature: entriesSignature(),
     settings_path: settingsPath,
     installed_at: new Date().toISOString(),
-    entries: ENTRIES.map((e) => ({ event: e.event, matcher: e.matcher === undefined ? null : e.matcher })),
+    entries: ENTRIES.map((e) => ({
+      event: e.event,
+      matcher: e.matcher === undefined ? null : e.matcher,
+    })),
   });
 
   return { added, skipped, repointed, pruned, backupFile, settingsPath };
@@ -244,17 +259,25 @@ function status(settingsPath = claudeSettings) {
   const entries = ENTRIES.map((entry) => {
     const arr = (obj.hooks && obj.hooks[entry.event]) || [];
     const group = Array.isArray(arr)
-      ? arr.find((g) => g && g.matcher === entry.matcher && groupHasOurs(g, manifestCommand || HOOK_COMMAND))
+      ? arr.find(
+          (g) =>
+            g && g.matcher === entry.matcher && groupHasOurs(g, manifestCommand || HOOK_COMMAND)
+        )
       : null;
     // Which checkout this entry actually runs matters more than which one the
     // manifest claims: the manifest is ours to rewrite, settings.json is the
     // thing Claude Code executes.
     if (group) {
       for (const h of group.hooks) {
-        if (isOurHook(h, manifestCommand || HOOK_COMMAND) && h.command !== HOOK_COMMAND) foreign.add(h.command);
+        if (isOurHook(h, manifestCommand || HOOK_COMMAND) && h.command !== HOOK_COMMAND)
+          foreign.add(h.command);
       }
     }
-    return { event: entry.event, matcher: entry.matcher === undefined ? null : entry.matcher, installed: Boolean(group) };
+    return {
+      event: entry.event,
+      matcher: entry.matcher === undefined ? null : entry.matcher,
+      installed: Boolean(group),
+    };
   });
   const fullyInstalled = entries.every((e) => e.installed);
   return {
@@ -286,4 +309,12 @@ function driftReason(manifest, fullyInstalled, foreignCommands = []) {
   return null;
 }
 
-module.exports = { install, uninstall, status, driftReason, entriesSignature, ENTRIES, HOOK_COMMAND };
+module.exports = {
+  install,
+  uninstall,
+  status,
+  driftReason,
+  entriesSignature,
+  ENTRIES,
+  HOOK_COMMAND,
+};

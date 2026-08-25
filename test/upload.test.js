@@ -10,11 +10,9 @@ process.env.STATUSLINE_HOME = TESTHOME;
 const { test, before, after } = require('node:test');
 const assert = require('node:assert');
 const { ensureDirs, paths } = require('../src/paths');
-const sessions = require('../src/watcher/sessions');
 const spool = require('../src/watcher/spool');
 const config = require('../src/config');
 const { createUploader } = require('../src/upload');
-const { machineIdentity } = require('../src/upload/identity');
 
 ensureDirs();
 const SPOOL_NEW = path.join(TESTHOME, 'spool', 'new');
@@ -26,7 +24,12 @@ function spoolEvent(payload, tsMs) {
 }
 
 const SID = 'upload-test-session-1';
-const BASE = { session_id: SID, transcript_path: 'C:\\nope\\t.jsonl', cwd: 'C:\\proj\\demo', permission_mode: 'default' };
+const BASE = {
+  session_id: SID,
+  transcript_path: 'C:\\nope\\t.jsonl',
+  cwd: 'C:\\proj\\demo',
+  permission_mode: 'default',
+};
 const T0 = 1755100000000;
 
 // ---- mock ingest endpoint (in-process; NO real network leaves the machine) --
@@ -49,12 +52,28 @@ before(async () => {
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
   port = server.address().port;
   config.save({
-    upload: { enabled: true, endpoint: `http://127.0.0.1:${port}/v1/ingest`, token: 'team-secret', debounce_ms: 50 },
+    upload: {
+      enabled: true,
+      endpoint: `http://127.0.0.1:${port}/v1/ingest`,
+      token: 'team-secret',
+      debounce_ms: 50,
+    },
   });
 
   spoolEvent({ ...BASE, hook_event_name: 'SessionStart', source: 'startup' }, T0);
-  spoolEvent({ ...BASE, hook_event_name: 'UserPromptSubmit', prompt: 'build the widget' }, T0 + 1000);
-  spoolEvent({ ...BASE, hook_event_name: 'PostToolUse', tool_name: 'Bash', tool_input: { command: 'npm test' } }, T0 + 2000);
+  spoolEvent(
+    { ...BASE, hook_event_name: 'UserPromptSubmit', prompt: 'build the widget' },
+    T0 + 1000
+  );
+  spoolEvent(
+    {
+      ...BASE,
+      hook_event_name: 'PostToolUse',
+      tool_name: 'Bash',
+      tool_input: { command: 'npm test' },
+    },
+    T0 + 2000
+  );
   spoolEvent({ ...BASE, hook_event_name: 'Stop', stop_hook_active: false }, T0 + 3000);
   spoolEvent({ ...BASE, hook_event_name: 'SessionEnd', reason: 'prompt_input_exit' }, T0 + 4000);
   spool.drainOnce();
@@ -64,7 +83,10 @@ after(() => server.close());
 
 const SCHED_STATS = { queued: [], running: false, consecutiveAuthErrors: 0 };
 function makeUploader() {
-  return createUploader({ getSchedulerStats: () => SCHED_STATS, startedAt: new Date(T0).toISOString() });
+  return createUploader({
+    getSchedulerStats: () => SCHED_STATS,
+    startedAt: new Date(T0).toISOString(),
+  });
 }
 
 function egressLines() {
@@ -148,7 +170,10 @@ test('a correction label alone re-ships the doc and rides it to the server', asy
   u.reconcile();
   await u.flush();
   assert.strictEqual(received.length, posts + 1, 'label change alone must re-upload');
-  assert.deepStrictEqual(received.at(-1).body.sessions[0].correction, { label: 'ignore', field_overrides: null });
+  assert.deepStrictEqual(received.at(-1).body.sessions[0].correction, {
+    label: 'ignore',
+    field_overrides: null,
+  });
 
   // Clearing the label re-ships once more, with the correction gone.
   grouping.setSessionLabel(SID, null);
@@ -159,7 +184,10 @@ test('a correction label alone re-ships the doc and rides it to the server', asy
 });
 
 test('reconcile re-derives the dirty set from disk (no in-memory state needed)', async () => {
-  spoolEvent({ ...BASE, hook_event_name: 'UserPromptSubmit', prompt: 'change after restart' }, T0 + 6000);
+  spoolEvent(
+    { ...BASE, hook_event_name: 'UserPromptSubmit', prompt: 'change after restart' },
+    T0 + 6000
+  );
   spool.drainOnce();
   const fresh = makeUploader(); // simulates a watcher restart: empty dirty set
   const posts = received.length;
@@ -258,7 +286,10 @@ test('ingest ACK delivers validated normalization tables; junk is dropped, versi
   assert.strictEqual(received.at(-1).body.config_version, 0);
 
   // Server pushes v42 with one bad entry — stored minus the junk, callback fires.
-  respondBody = { ok: true, team_config: { version: 42, aliases: { bun: 'nodejs', 'BAD KEY!': 'x' } } };
+  respondBody = {
+    ok: true,
+    team_config: { version: 42, aliases: { bun: 'nodejs', 'BAD KEY!': 'x' } },
+  };
   await u.heartbeat();
   const stored = JSON.parse(fs.readFileSync(paths.teamConfig, 'utf8'));
   assert.strictEqual(stored.version, 42);

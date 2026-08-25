@@ -5,7 +5,7 @@
 // deliveries, and interleaved concurrent sessions are handled by construction.
 const fs = require('fs');
 const path = require('path');
-const { paths, sessionFile, sessionEventsFile, safeSessionId } = require('../paths');
+const { paths, sessionFile, sessionEventsFile } = require('../paths');
 const { readJson, writeJsonAtomic, appendJsonl, readJsonl } = require('../util/jsonfile');
 const { maskSecrets } = require('../util/secrets');
 const { gitInfo } = require('../util/gitroot');
@@ -23,7 +23,10 @@ function pruneToolInput(toolInput) {
   if (!toolInput || typeof toolInput !== 'object') return toolInput;
   const out = Array.isArray(toolInput) ? [] : {};
   for (const [k, v] of Object.entries(toolInput)) {
-    if (typeof v === 'string' && (ALWAYS_EXCERPT_KEYS.has(k) ? v.length > EXCERPT_LEN : v.length > PRUNE_THRESHOLD)) {
+    if (
+      typeof v === 'string' &&
+      (ALWAYS_EXCERPT_KEYS.has(k) ? v.length > EXCERPT_LEN : v.length > PRUNE_THRESHOLD)
+    ) {
       out[k] = excerptOf(v, EXCERPT_LEN);
     } else if (v && typeof v === 'object') {
       out[k] = pruneToolInput(v);
@@ -58,8 +61,10 @@ function normalizeEvent(payload, fileId, receivedAtIso) {
 function ingestBuffer(buf, fileId, receivedAtIso) {
   const payload = JSON.parse(buf.toString('utf8'));
   if (!payload || typeof payload !== 'object') throw new Error('payload is not an object');
-  if (typeof payload.session_id !== 'string' || !payload.session_id) throw new Error('missing session_id');
-  if (typeof payload.hook_event_name !== 'string' || !payload.hook_event_name) throw new Error('missing hook_event_name');
+  if (typeof payload.session_id !== 'string' || !payload.session_id)
+    throw new Error('missing session_id');
+  if (typeof payload.hook_event_name !== 'string' || !payload.hook_event_name)
+    throw new Error('missing hook_event_name');
   const event = normalizeEvent(payload, fileId, receivedAtIso);
   appendJsonl(sessionEventsFile(payload.session_id), event);
   return payload.session_id;
@@ -195,8 +200,10 @@ function deriveState(sid, events) {
     if (!state.created_at) state.created_at = e.at;
     state.last_event_at = e.at;
     if (typeof p.cwd === 'string' && p.cwd) counterAdd(cwdCounter, p.cwd);
-    if (typeof p.transcript_path === 'string' && p.transcript_path) state.transcript_path = p.transcript_path;
-    if (p._statusline && Number.isInteger(p._statusline.claude_pid)) state.host_pid = p._statusline.claude_pid;
+    if (typeof p.transcript_path === 'string' && p.transcript_path)
+      state.transcript_path = p.transcript_path;
+    if (p._statusline && Number.isInteger(p._statusline.claude_pid))
+      state.host_pid = p._statusline.claude_pid;
     if (typeof p.permission_mode === 'string' && p.permission_mode) permSet.add(p.permission_mode);
     if (e.agent_id) state.counts.subagent_events++;
 
@@ -237,7 +244,11 @@ function deriveState(sid, events) {
           if (fp) {
             fileSet.add(fp);
             const ext = path.extname(fp).toLowerCase();
-            if (ext) counterAdd(EDIT_TOOLS.has(name) ? state.tools.extensions : state.tools.extensions_read, ext);
+            if (ext)
+              counterAdd(
+                EDIT_TOOLS.has(name) ? state.tools.extensions : state.tools.extensions_read,
+                ext
+              );
           }
         } else if (name.startsWith('mcp__')) {
           const server = name.split('__')[1];
@@ -319,7 +330,8 @@ function foldSession(sid) {
     const cfg = config.load();
     const newTurns = state.counts.turns - (state.turns_at_classification || 0);
     const endedAfter = state.end_at && state.classified_at && state.end_at > state.classified_at;
-    if (newTurns >= cfg.reclassify_min_new_turns || endedAfter) state.classification_state = 'stale';
+    if (newTurns >= cfg.reclassify_min_new_turns || endedAfter)
+      state.classification_state = 'stale';
   }
 
   writeJsonAtomic(sessionFile(sid), state);
@@ -360,4 +372,13 @@ function getEvents(sid, limit = 500) {
   return events.slice(-limit);
 }
 
-module.exports = { ingestBuffer, foldSession, getSession, updateSession, listSessions, getEvents, normalizeEvent, deriveState };
+module.exports = {
+  ingestBuffer,
+  foldSession,
+  getSession,
+  updateSession,
+  listSessions,
+  getEvents,
+  normalizeEvent,
+  deriveState,
+};

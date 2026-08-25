@@ -6,7 +6,6 @@
 // customizations disabled).
 const { spawn } = require('child_process');
 const { paths } = require('../paths');
-const log = require('../util/log');
 const { resolveCommand, detachOptions, killTree } = require('../util/platform');
 
 let resolvedCli = null;
@@ -118,14 +117,17 @@ async function attempt(prompt, cfg) {
   if (res.timedOut) return { outcome: 'timeout', detail: `no result within ${cfg.timeout_ms}ms` };
   if (res.code !== 0) {
     const detail = (res.stderr || res.stdout || '').slice(0, 2000);
-    return { outcome: AUTH_RE.test(detail) ? 'auth_error' : 'nonzero_exit', detail: `exit ${res.code}: ${detail}` };
+    return {
+      outcome: AUTH_RE.test(detail) ? 'auth_error' : 'nonzero_exit',
+      detail: `exit ${res.code}: ${detail}`,
+    };
   }
   // --output-format json envelope: { type:"result", subtype, result: "...", is_error, ... }
-  let envelope = null;
+  let envelope;
   try {
     envelope = JSON.parse(res.stdout);
-  } catch (e) {
-    envelope = null;
+  } catch {
+    /* not the JSON envelope — the raw stdout is used below instead */
   }
   const resultText = envelope && typeof envelope.result === 'string' ? envelope.result : res.stdout;
   if (envelope && envelope.is_error) {
@@ -133,7 +135,11 @@ async function attempt(prompt, cfg) {
     return { outcome: AUTH_RE.test(detail) ? 'auth_error' : 'nonzero_exit', detail };
   }
   const json = extractJsonObject(resultText);
-  if (!json) return { outcome: 'parse_error', detail: `no JSON object in result: ${String(resultText).slice(0, 500)}` };
+  if (!json)
+    return {
+      outcome: 'parse_error',
+      detail: `no JSON object in result: ${String(resultText).slice(0, 500)}`,
+    };
   return { outcome: 'ok', json, ...callFacts(envelope) };
 }
 
@@ -142,7 +148,10 @@ async function attempt(prompt, cfg) {
 // can prove which model ran rather than restating the setting.
 function callFacts(envelope) {
   if (!envelope) return {};
-  const models = envelope.modelUsage && typeof envelope.modelUsage === 'object' ? Object.keys(envelope.modelUsage) : [];
+  const models =
+    envelope.modelUsage && typeof envelope.modelUsage === 'object'
+      ? Object.keys(envelope.modelUsage)
+      : [];
   const facts = {};
   if (models.length) facts.actual_model = models.length === 1 ? models[0] : models.join(',');
   if (typeof envelope.total_cost_usd === 'number') facts.cost_usd = envelope.total_cost_usd;
@@ -151,11 +160,13 @@ function callFacts(envelope) {
   // explain a cheap call that still moved a lot of tokens.
   const u = envelope.usage || {};
   const num = (x) => (typeof x === 'number' && isFinite(x) ? x : 0);
-  const inputParts = num(u.input_tokens) + num(u.cache_read_input_tokens) + num(u.cache_creation_input_tokens);
+  const inputParts =
+    num(u.input_tokens) + num(u.cache_read_input_tokens) + num(u.cache_creation_input_tokens);
   if (inputParts) {
     facts.input_tokens = inputParts;
     if (num(u.cache_read_input_tokens)) facts.cache_read_tokens = u.cache_read_input_tokens;
-    if (num(u.cache_creation_input_tokens)) facts.cache_creation_tokens = u.cache_creation_input_tokens;
+    if (num(u.cache_creation_input_tokens))
+      facts.cache_creation_tokens = u.cache_creation_input_tokens;
   }
   if (typeof u.output_tokens === 'number') facts.output_tokens = u.output_tokens;
   return facts;

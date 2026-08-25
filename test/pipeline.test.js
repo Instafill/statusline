@@ -26,16 +26,66 @@ function spoolEvent(payload, tsMs) {
 }
 
 const SID = 'aaaa-bbbb-cccc';
-const BASE = { session_id: SID, transcript_path: 'C:\\nope\\t.jsonl', cwd: 'C:\\work\\statusline', permission_mode: 'default' };
+const BASE = {
+  session_id: SID,
+  transcript_path: 'C:\\nope\\t.jsonl',
+  cwd: 'C:\\work\\statusline',
+  permission_mode: 'default',
+};
 const T0 = 1755000000000;
 
 function seedToolHeavySession() {
   spoolEvent({ ...BASE, hook_event_name: 'SessionStart', source: 'startup' }, T0);
-  spoolEvent({ ...BASE, hook_event_name: 'UserPromptSubmit', prompt: 'Fix the failing HubSpot sync job and add retries' }, T0 + 1000);
-  spoolEvent({ ...BASE, hook_event_name: 'PostToolUse', tool_name: 'Bash', tool_input: { command: 'npm install axios && npm test' } }, T0 + 2000);
-  spoolEvent({ ...BASE, hook_event_name: 'PostToolUse', tool_name: 'Edit', tool_input: { file_path: 'C:\\proj\\src\\sync.ts', old_string: 'x'.repeat(900), new_string: 'y'.repeat(900) } }, T0 + 3000);
-  spoolEvent({ ...BASE, hook_event_name: 'PostToolUse', tool_name: 'mcp__hubspot__update_contact', tool_input: { id: 5 } }, T0 + 4000);
-  spoolEvent({ ...BASE, hook_event_name: 'PostToolUse', tool_name: 'Bash', tool_input: { command: 'curl -H "Authorization: Bearer abc123secrettoken456" https://api.hubspot.com' } }, T0 + 5000);
+  spoolEvent(
+    {
+      ...BASE,
+      hook_event_name: 'UserPromptSubmit',
+      prompt: 'Fix the failing HubSpot sync job and add retries',
+    },
+    T0 + 1000
+  );
+  spoolEvent(
+    {
+      ...BASE,
+      hook_event_name: 'PostToolUse',
+      tool_name: 'Bash',
+      tool_input: { command: 'npm install axios && npm test' },
+    },
+    T0 + 2000
+  );
+  spoolEvent(
+    {
+      ...BASE,
+      hook_event_name: 'PostToolUse',
+      tool_name: 'Edit',
+      tool_input: {
+        file_path: 'C:\\proj\\src\\sync.ts',
+        old_string: 'x'.repeat(900),
+        new_string: 'y'.repeat(900),
+      },
+    },
+    T0 + 3000
+  );
+  spoolEvent(
+    {
+      ...BASE,
+      hook_event_name: 'PostToolUse',
+      tool_name: 'mcp__hubspot__update_contact',
+      tool_input: { id: 5 },
+    },
+    T0 + 4000
+  );
+  spoolEvent(
+    {
+      ...BASE,
+      hook_event_name: 'PostToolUse',
+      tool_name: 'Bash',
+      tool_input: {
+        command: 'curl -H "Authorization: Bearer abc123secrettoken456" https://api.hubspot.com',
+      },
+    },
+    T0 + 5000
+  );
   spoolEvent({ ...BASE, hook_event_name: 'Stop', stop_hook_active: false }, T0 + 6000);
   spoolEvent({ ...BASE, hook_event_name: 'UserPromptSubmit', prompt: 'now deploy it' }, T0 + 7000);
   spoolEvent({ ...BASE, hook_event_name: 'Stop', stop_hook_active: false }, T0 + 8000);
@@ -97,7 +147,14 @@ test('digest renders tool activity and metadata', () => {
 test('pure-conversation session digest says conversation only', () => {
   const sid2 = 'pure-convo-1';
   const base2 = { ...BASE, session_id: sid2, cwd: 'C:\\somewhere\\else' };
-  spoolEvent({ ...base2, hook_event_name: 'UserPromptSubmit', prompt: 'Analyze why this insurance claims operation is losing money' }, T0 + 20000);
+  spoolEvent(
+    {
+      ...base2,
+      hook_event_name: 'UserPromptSubmit',
+      prompt: 'Analyze why this insurance claims operation is losing money',
+    },
+    T0 + 20000
+  );
   spoolEvent({ ...base2, hook_event_name: 'Stop', stop_hook_active: false }, T0 + 21000);
   spool.drainOnce();
   const s = sessions.getSession(sid2);
@@ -111,7 +168,14 @@ test('digest shrinks under budget for oversized sessions', () => {
   const base3 = { ...BASE, session_id: sid3 };
   let ts = T0 + 30000;
   for (let i = 0; i < 60; i++) {
-    spoolEvent({ ...base3, hook_event_name: 'UserPromptSubmit', prompt: `prompt ${i}: ` + 'lorem ipsum '.repeat(120) }, ts++);
+    spoolEvent(
+      {
+        ...base3,
+        hook_event_name: 'UserPromptSubmit',
+        prompt: `prompt ${i}: ` + 'lorem ipsum '.repeat(120),
+      },
+      ts++
+    );
     spoolEvent({ ...base3, hook_event_name: 'Stop' }, ts++);
   }
   spool.drainOnce();
@@ -128,9 +192,23 @@ test('system-generated pseudo-prompts do not count as prompts or turns', () => {
   let ts = T0 + 40000;
   spoolEvent({ ...base4, hook_event_name: 'UserPromptSubmit', prompt: 'real user question' }, ts++);
   spoolEvent({ ...base4, hook_event_name: 'Stop' }, ts++);
-  spoolEvent({ ...base4, hook_event_name: 'UserPromptSubmit', prompt: '<task-notification> <task-id>abc</task-id> stopped' }, ts++);
+  spoolEvent(
+    {
+      ...base4,
+      hook_event_name: 'UserPromptSubmit',
+      prompt: '<task-notification> <task-id>abc</task-id> stopped',
+    },
+    ts++
+  );
   spoolEvent({ ...base4, hook_event_name: 'Stop' }, ts++);
-  spoolEvent({ ...base4, hook_event_name: 'UserPromptSubmit', prompt: '<command-name>/compact</command-name> output' }, ts++);
+  spoolEvent(
+    {
+      ...base4,
+      hook_event_name: 'UserPromptSubmit',
+      prompt: '<command-name>/compact</command-name> output',
+    },
+    ts
+  );
   spool.drainOnce();
   const s = sessions.getSession(sid4);
   assert.strictEqual(s.counts.prompts, 1);
@@ -184,17 +262,30 @@ test('continuation sessions inherit a recent project classification; divergent e
   const donorSid = 'inherit-donor';
   const donorBase = { ...BASE, session_id: donorSid, cwd };
   spoolEvent({ ...donorBase, hook_event_name: 'SessionStart', source: 'startup' }, ts++);
-  spoolEvent({ ...donorBase, hook_event_name: 'UserPromptSubmit', prompt: 'build the hubspot sync' }, ts++);
+  spoolEvent(
+    { ...donorBase, hook_event_name: 'UserPromptSubmit', prompt: 'build the hubspot sync' },
+    ts++
+  );
   spoolEvent({ ...donorBase, hook_event_name: 'Stop' }, ts++);
   spool.drainOnce();
   sessions.updateSession(donorSid, {
     classification_state: 'classified',
     classified_at: new Date().toISOString(),
     classification: {
-      schema_version: 1, professional_work: true, work_category: 'client_work',
-      work_type: 'crm integration development', industry: ['sales'], business_function: ['revenue operations'],
-      tasks: ['built sync'], artifacts: [], work_stage: 'implementation', work_depth: 'substantive',
-      project_hint: 'hubspot sync', continuation: false, confidence: 0.9, rationale: 'donor',
+      schema_version: 1,
+      professional_work: true,
+      work_category: 'client_work',
+      work_type: 'crm integration development',
+      industry: ['sales'],
+      business_function: ['revenue operations'],
+      tasks: ['built sync'],
+      artifacts: [],
+      work_stage: 'implementation',
+      work_depth: 'substantive',
+      project_hint: 'hubspot sync',
+      continuation: false,
+      confidence: 0.9,
+      rationale: 'donor',
       technologies: [
         { name: 'TypeScript', evidence: 'hands_on', basis: ['semantic'], verified: true },
         { name: 'HubSpot', evidence: 'discussed', basis: ['semantic'], verified: false },
@@ -207,7 +298,10 @@ test('continuation sessions inherit a recent project classification; divergent e
   const contSid = 'inherit-cont';
   const contBase = { ...BASE, session_id: contSid, cwd };
   spoolEvent({ ...contBase, hook_event_name: 'SessionStart', source: 'resume' }, ts++);
-  spoolEvent({ ...contBase, hook_event_name: 'UserPromptSubmit', prompt: 'continue where we left off' }, ts++);
+  spoolEvent(
+    { ...contBase, hook_event_name: 'UserPromptSubmit', prompt: 'continue where we left off' },
+    ts++
+  );
   spoolEvent({ ...contBase, hook_event_name: 'Stop' }, ts++);
   spool.drainOnce();
   const inherited = tryInherit(sessions.getSession(contSid), config.load(), 'idle');
@@ -225,8 +319,19 @@ test('continuation sessions inherit a recent project classification; divergent e
   const divSid = 'inherit-diverged';
   const divBase = { ...BASE, session_id: divSid, cwd };
   spoolEvent({ ...divBase, hook_event_name: 'SessionStart', source: 'resume' }, ts++);
-  spoolEvent({ ...divBase, hook_event_name: 'UserPromptSubmit', prompt: 'now analyze the data' }, ts++);
-  spoolEvent({ ...divBase, hook_event_name: 'PostToolUse', tool_name: 'Write', tool_input: { file_path: 'C:\\proj\\analysis.py' } }, ts++);
+  spoolEvent(
+    { ...divBase, hook_event_name: 'UserPromptSubmit', prompt: 'now analyze the data' },
+    ts++
+  );
+  spoolEvent(
+    {
+      ...divBase,
+      hook_event_name: 'PostToolUse',
+      tool_name: 'Write',
+      tool_input: { file_path: 'C:\\proj\\analysis.py' },
+    },
+    ts++
+  );
   spoolEvent({ ...divBase, hook_event_name: 'Stop' }, ts++);
   spool.drainOnce();
   assert.strictEqual(tryInherit(sessions.getSession(divSid), config.load(), 'idle'), null);
@@ -236,7 +341,7 @@ test('continuation sessions inherit a recent project classification; divergent e
   const freshBase = { ...BASE, session_id: freshSid, cwd };
   spoolEvent({ ...freshBase, hook_event_name: 'SessionStart', source: 'startup' }, ts++);
   spoolEvent({ ...freshBase, hook_event_name: 'UserPromptSubmit', prompt: 'new topic' }, ts++);
-  spoolEvent({ ...freshBase, hook_event_name: 'Stop' }, ts++);
+  spoolEvent({ ...freshBase, hook_event_name: 'Stop' }, ts);
   spool.drainOnce();
   assert.strictEqual(tryInherit(sessions.getSession(freshSid), config.load(), 'idle'), null);
 });
@@ -263,8 +368,16 @@ test('host pid is folded from hook payloads and drives liveness', () => {
   const sid5 = 'host-pid-1';
   const base5 = { ...BASE, session_id: sid5 };
   let ts = T0 + 60000;
-  spoolEvent({ ...base5, hook_event_name: 'SessionStart', source: 'startup', _statusline: { claude_pid: process.pid } }, ts++);
-  spoolEvent({ ...base5, hook_event_name: 'UserPromptSubmit', prompt: 'hello' }, ts++);
+  spoolEvent(
+    {
+      ...base5,
+      hook_event_name: 'SessionStart',
+      source: 'startup',
+      _statusline: { claude_pid: process.pid },
+    },
+    ts++
+  );
+  spoolEvent({ ...base5, hook_event_name: 'UserPromptSubmit', prompt: 'hello' }, ts);
   spool.drainOnce();
   const s = sessions.getSession(sid5);
   assert.strictEqual(s.host_pid, process.pid);
