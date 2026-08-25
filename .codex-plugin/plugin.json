@@ -1,6 +1,6 @@
 {
   "name": "statusline",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "description": "Read and operate the local Statusline session observer from Codex.",
   "author": { "name": "Instafill", "url": "https://github.com/Instafill" },
   "homepage": "https://github.com/Instafill/statusline",

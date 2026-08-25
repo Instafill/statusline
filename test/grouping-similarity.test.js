@@ -127,7 +127,7 @@ test('a linked worktree with git_main_root folds into the parent repo project â€
   assert.strictEqual(projects[0].membership[worktree.session_id], 'worktree');
 });
 
-test('same origin on different checkout paths crosses the suggestion threshold on its own', () => {
+test('same origin on different checkout paths is ONE project, with nothing to approve', () => {
   const a = mkState({
     cwd: 'C:\\work\\acme',
     gitRoot: 'C:\\work\\acme',
@@ -139,13 +139,108 @@ test('same origin on different checkout paths crosses the suggestion threshold o
     cwd: 'D:\\repos\\acme-clone',
     gitRoot: 'D:\\repos\\acme-clone',
     origin: 'git@github.com:acme/widgets', // scp-style, no .git â€” same repo
-    created: '2026-08-01T10:00:00.000Z', // far apart in time: origin must carry alone
+    created: '2026-08-01T10:00:00.000Z', // nothing else lines up: origin carries alone
     cls: cls('completely different hint', [['Python', 'discussed']]),
   });
   const { projects } = groupSessions([a, b], EMPTY_CORRECTIONS, WINDOWS_PATH_OPTS);
-  const suggestions = projects.flatMap((p) => p.suggested_merges);
-  assert.strictEqual(suggestions.length, 1, 'same-origin pair must be suggested');
-  assert.ok(suggestions[0].reasons.includes('same_origin'));
+  assert.strictEqual(projects.length, 1, 'one repo is one project, whatever it is checked out as');
+  assert.deepStrictEqual(projects[0].key, { kind: 'origin', value: 'github.com/acme/widgets' });
+  assert.strictEqual(projects[0].name, 'widgets', 'named for the repo, not for either folder');
+  assert.deepStrictEqual(projects[0].roots.sort(), ['c:\\work\\acme', 'd:\\repos\\acme-clone']);
+  assert.strictEqual(projects[0].suggested_merges.length, 0, 'nothing left to suggest');
+});
+
+test('one path string, two different repos: the session own origin splits them', () => {
+  // Two people both keep a C:\work\api. Keying on the path merged unrelated
+  // work; the remote is what tells them apart.
+  const mine = mkState({
+    cwd: 'C:\\work\\api',
+    gitRoot: 'C:\\work\\api',
+    origin: 'https://github.com/acme/billing-api.git',
+    created: '2026-08-01T10:00:00.000Z',
+    cls: cls('billing', [['Node.js', 'hands_on']]),
+  });
+  const theirs = mkState({
+    cwd: 'C:\\work\\api',
+    gitRoot: 'C:\\work\\api',
+    origin: 'https://github.com/other/search-api.git',
+    created: '2026-08-02T10:00:00.000Z',
+    cls: cls('search', [['Go', 'hands_on']]),
+  });
+  const { projects } = groupSessions([mine, theirs], EMPTY_CORRECTIONS, WINDOWS_PATH_OPTS);
+  assert.strictEqual(projects.length, 2, 'same folder name is not the same repo');
+  assert.deepStrictEqual(
+    projects.map((p) => p.key.value).sort(),
+    ['github.com/acme/billing-api', 'github.com/other/search-api']
+  );
+});
+
+test('a session that captured no origin joins its repo instead of stranding beside it', () => {
+  // Recorded before the remote was added, or while gitInfo failed: it carries
+  // the root but no origin, and must not become a path-keyed twin.
+  const early = mkState({
+    cwd: 'C:\\work\\acme',
+    gitRoot: 'C:\\work\\acme',
+    created: '2026-06-01T10:00:00.000Z',
+    cls: cls('acme backend', [['Node.js', 'hands_on']]),
+  });
+  const later = mkState({
+    cwd: 'C:\\work\\acme',
+    gitRoot: 'C:\\work\\acme',
+    origin: 'https://github.com/acme/widgets.git',
+    created: '2026-08-01T10:00:00.000Z',
+    cls: cls('acme backend', [['Node.js', 'hands_on']]),
+  });
+  const { projects } = groupSessions([early, later], EMPTY_CORRECTIONS, WINDOWS_PATH_OPTS);
+  assert.strictEqual(projects.length, 1);
+  assert.strictEqual(projects[0].key.kind, 'origin');
+  assert.strictEqual(projects[0].session_ids.length, 2);
+});
+
+test('a repo with no remote keeps its historical path-derived id', () => {
+  const local = mkState({
+    cwd: 'C:\\work\\scratch',
+    gitRoot: 'C:\\work\\scratch',
+    created: '2026-08-01T10:00:00.000Z',
+    cls: cls('scratch', [['Node.js', 'hands_on']]),
+  });
+  const { projects } = groupSessions([local], EMPTY_CORRECTIONS, WINDOWS_PATH_OPTS);
+  assert.deepStrictEqual(projects[0].key, { kind: 'git_root', value: 'c:\\work\\scratch' });
+});
+
+test('corrections made against the old path-derived id survive the move to origin keys', () => {
+  const core = require('../src/grouping-core');
+  const s = mkState({
+    cwd: 'C:\\work\\acme',
+    gitRoot: 'C:\\work\\acme',
+    origin: 'https://github.com/acme/widgets.git',
+    created: '2026-08-01T10:00:00.000Z',
+    cls: cls('acme backend', [['Node.js', 'hands_on']]),
+  });
+  const clone = mkState({
+    cwd: 'D:\\repos\\acme',
+    gitRoot: 'D:\\repos\\acme',
+    origin: 'https://github.com/acme/widgets.git',
+    created: '2026-08-02T10:00:00.000Z',
+    cls: cls('acme backend', [['Node.js', 'hands_on']]),
+  });
+  const legacyId = core.projectIdOf('git_root', 'c:\\work\\acme');
+  const legacyCloneId = core.projectIdOf('git_root', 'd:\\repos\\acme');
+  const corrections = {
+    ...EMPTY_CORRECTIONS,
+    projects: {
+      [legacyId]: { name: 'Acme Widgets' },
+      // The user had already merged the clone in by hand; that merge is now
+      // true by construction and must not leave a self-loop behind.
+      [legacyCloneId]: { merged_into: legacyId },
+    },
+    dismissed_merges: [[legacyId, legacyCloneId]],
+  };
+  const { projects } = groupSessions([s, clone], corrections, WINDOWS_PATH_OPTS);
+  assert.strictEqual(projects.length, 1);
+  assert.strictEqual(projects[0].id, core.projectIdOf('origin', 'github.com/acme/widgets'));
+  assert.strictEqual(projects[0].name, 'Acme Widgets', 'the rename must not be dropped with the old id');
+  assert.strictEqual(projects[0].session_ids.length, 2);
 });
 
 test('an engagement claims projects by raw path and origin keys under BOTH normalizations', () => {
