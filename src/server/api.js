@@ -12,6 +12,7 @@ const config = require('../config');
 const sessions = require('../watcher/sessions');
 const grouping = require('../grouping');
 const egress = require('../classify/egress');
+const { resolveClassifierCli } = require('../classify/claude-cli');
 const installer = require('../installer');
 const { buildDigest } = require('../digest');
 const { readAssistantExcerpts } = require('../watcher/transcript');
@@ -65,11 +66,15 @@ function createApi({ scheduler, startedAt }) {
     return map;
   };
 
+  // classifier_cli is what THIS process resolved, in the environment it was
+  // launched from. doctor cannot re-derive it: a shell carries a PATH the
+  // watcher never sees, and launchd exposes no PATH to ask for.
   routes['GET /api/health'] = () => ({
     ok: true,
     pid: process.pid,
     started_at: startedAt,
     app: 'statusline',
+    classifier_cli: resolveClassifierCli(config.load().classifier.cli_path),
   });
 
   // The /statusline skill is opt-in for a clone install (link a directory), so

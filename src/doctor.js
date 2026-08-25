@@ -7,6 +7,7 @@ const http = require('http');
 const { spawnSync } = require('child_process');
 const { paths, claudeSettings } = require('./paths');
 const { resolveCommand } = require('./util/platform');
+const { resolveClassifierCli } = require('./classify/claude-cli');
 const installer = require('./installer');
 const { readAgentRoot, isPluginInstall, AGENT_ROOT } = require('./agent-root');
 const autostart = require('./autostart');
@@ -15,6 +16,18 @@ const config = require('./config');
 const OK = 'ok';
 const WARN = 'warn';
 const FAIL = 'fail';
+
+// The health endpoint is local and answers immediately, so a short ceiling
+// turns a hung watcher into a fast warning instead of a stalled doctor run.
+const HEALTH_TIMEOUT_MS = 2_000;
+
+// How the health probe ended. DOWN is a socket error, which on a loopback
+// address means nothing is listening. UNREACHABLE is a connection that opened
+// and then timed out or returned something unparseable, which is a different
+// machine state with a different repair.
+const HEALTH_OK = 'ok';
+const HEALTH_DOWN = 'down';
+const HEALTH_UNREACHABLE = 'unreachable';
 
 function checkNode() {
   const major = Number(process.versions.node.split('.')[0]);
@@ -39,15 +52,16 @@ function checkNode() {
 
 function checkClaudeCli() {
   const cfg = config.load();
-  const configured = cfg.classifier.cli_path;
-  const resolved = configured === 'claude' ? resolveCommand('claude') : configured;
+  const resolved = resolveClassifierCli(cfg.classifier.cli_path);
+
   if (!resolved) {
     return {
       status: FAIL,
-      detail: 'the `claude` CLI is not on PATH',
+      detail: 'the `claude` CLI is not on PATH or in any known install directory',
       fix: 'Install Claude Code, or set classifier.cli_path in ~/.statusline/config.json',
     };
   }
+
   return { status: OK, detail: resolved };
 }
 
@@ -55,9 +69,9 @@ function checkClaudeCli() {
 // that distinguishes "installed" from "logged in and working".
 function checkClaudeAuth() {
   const cfg = config.load();
-  const cli =
-    cfg.classifier.cli_path === 'claude' ? resolveCommand('claude') : cfg.classifier.cli_path;
-  if (!cli) return { status: WARN, detail: 'skipped — CLI not found' };
+  const cli = resolveClassifierCli(cfg.classifier.cli_path);
+
+  if (!cli) return { status: WARN, detail: 'skipped, CLI not found' };
   const res = spawnSync(
     cli,
     [
@@ -187,34 +201,132 @@ function checkAutostart() {
   return { status: OK, detail: `${st.mechanism} "${st.id}" registered` };
 }
 
-function checkWatcher() {
+/**
+ * @typedef {object} CheckResult
+ * @property {'ok' | 'warn' | 'fail'} status
+ * @property {string} detail
+ * @property {string} [fix] the exact command or edit that repairs it
+ */
+
+/**
+ * @typedef {{ state: typeof HEALTH_OK, body: Record<string, any> }
+ *   | { state: typeof HEALTH_DOWN }
+ *   | { state: typeof HEALTH_UNREACHABLE, reason: string }} HealthProbe
+ */
+
+/**
+ * Whether the watcher can reach the classifier from the environment it runs in.
+ * The Claude CLI and Claude auth checks answer "installed" and "logged in" from
+ * this shell, which on macOS is a different environment: a shell's PATH is built
+ * by its rc files, a LaunchAgent gets launchd's, and launchd exposes no PATH to
+ * read back. The watcher is the only process that knows, so it is asked.
+ * @returns {Promise<CheckResult>}
+ */
+async function checkClassifierReach() {
   const cfg = config.load();
+  const probe = await fetchHealth(cfg.port);
+
+  if (probe.state !== HEALTH_OK) {
+    return { status: WARN, detail: `skipped, ${probeFailure(probe)}` };
+  }
+
+  const health = probe.body;
+
+  if (!('classifier_cli' in health)) {
+    return {
+      status: WARN,
+      detail: 'the running watcher predates this check',
+      fix: 'Restart the watcher: kill the pid in ~/.statusline/watcher.lock, then `node src/cli.js start`',
+    };
+  }
+
+  if (!health.classifier_cli) {
+    return {
+      status: FAIL,
+      detail: 'the watcher cannot find the `claude` CLI from its own environment',
+      fix: 'Set classifier.cli_path to an absolute path in ~/.statusline/config.json, then restart the watcher',
+    };
+  }
+
+  return { status: OK, detail: `the watcher resolved ${health.classifier_cli}` };
+}
+
+/**
+ * Why a probe did not come back with a body, as a phrase to drop into a check's
+ * detail line.
+ * @param {HealthProbe} probe
+ * @returns {string} empty for a probe that did answer
+ */
+function probeFailure(probe) {
+  switch (probe.state) {
+    case HEALTH_DOWN:
+      return 'the watcher is not running';
+    case HEALTH_UNREACHABLE:
+      return `the watcher did not answer, ${probe.reason}`;
+    default:
+      return '';
+  }
+}
+
+/**
+ * @param {number} port
+ * @returns {Promise<HealthProbe>}
+ */
+function fetchHealth(port) {
   return new Promise((resolve) => {
     const req = http.get(
-      { host: '127.0.0.1', port: cfg.port, path: '/api/health', timeout: 2000 },
+      { host: '127.0.0.1', port, path: '/api/health', timeout: HEALTH_TIMEOUT_MS },
       (res) => {
-        res.resume();
-        resolve({ status: OK, detail: `running at http://127.0.0.1:${cfg.port}` });
+        let body = '';
+
+        res.on('data', (d) => (body += d));
+        res.on('end', () => {
+          try {
+            resolve({ state: HEALTH_OK, body: JSON.parse(body) });
+          } catch (e) {
+            resolve({ state: HEALTH_UNREACHABLE, reason: `unreadable answer: ${e.message}` });
+          }
+        });
       }
     );
-    req.on('error', () => {
-      let pending = 0;
-      try {
-        pending = fs.readdirSync(paths.spoolNew).length;
-      } catch (e) {
-        /* spool may not exist yet */
-      }
-      resolve({
-        status: WARN,
-        detail: `not running${pending ? ` — ${pending} event(s) waiting in the spool` : ''}`,
-        fix: 'Run `node src/cli.js start` (or `node src/cli.js autostart`)',
-      });
-    });
+
+    req.on('error', () => resolve({ state: HEALTH_DOWN }));
     req.on('timeout', () => {
       req.destroy();
-      resolve({ status: WARN, detail: 'health check timed out' });
+      resolve({ state: HEALTH_UNREACHABLE, reason: `no answer within ${HEALTH_TIMEOUT_MS}ms` });
     });
   });
+}
+
+/**
+ * Whether the watcher is up, by probing the local health endpoint. When it is
+ * not, the detail carries how many events are waiting in the spool, since that
+ * number is what the downtime has cost so far.
+ * @returns {Promise<CheckResult>}
+ */
+async function checkWatcher() {
+  const cfg = config.load();
+  const probe = await fetchHealth(cfg.port);
+
+  if (probe.state === HEALTH_OK) {
+    return { status: OK, detail: `running at http://127.0.0.1:${cfg.port}` };
+  }
+
+  let pending = 0;
+
+  try {
+    pending = fs.readdirSync(paths.spoolNew).length;
+  } catch (e) {
+    /* spool may not exist yet */
+  }
+
+  const waiting = pending ? `, ${pending} event(s) waiting in the spool` : '';
+
+  return {
+    status: WARN,
+    detail: `${probeFailure(probe)}${waiting}`,
+    fix: 'Run `node src/cli.js start` (or `node src/cli.js autostart`)',
+  };
 }
 
 // One empty ingest batch (a pure heartbeat) proves endpoint reachability AND
@@ -296,6 +408,9 @@ const CHECKS = [
   ['Autostart', checkAutostart],
   ['Agent location', checkAgentRecord],
   ['Watcher', checkWatcher],
+  // After Watcher: it reads what that check proved is up, and a stopped watcher
+  // should be reported once, by the check that owns it.
+  ['Classifier reach', checkClassifierReach],
   ['Upload', checkUpload],
 ];
 

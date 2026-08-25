@@ -9,7 +9,9 @@ This repo is **single-context**: one `CONTEXT.md` and one `docs/adr/` at the roo
 - **`CLAUDE.md`** at the repo root - the hard rules, the two install shapes, and the gotchas. Read it first, it is the one document that is always current.
 - **`ARCHITECTURE.md`** - why the aggregation model is shaped the way it is, what it costs, where it stops scaling. Read it before changing what gets captured or how experience is counted.
 - **`CONTEXT.md`** at the repo root - the glossary.
-- **`docs/adr/`** - read ADRs that touch the area you are about to work in.
+- **`docs/adr/`** - read ADRs that touch the area you are about to work in. The
+  format, the numbering and the bar a decision must clear live in the
+  `/domain-modeling` skill's `ADR-FORMAT.md`.
 
 If any of these files do not exist, **proceed silently**. Do not flag their absence, do not suggest creating them upfront. The `/domain-modeling` skill (reached via `/grill-with-docs` and `/improve-codebase-architecture`) creates them lazily when terms or decisions actually get resolved.
 

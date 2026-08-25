@@ -124,6 +124,12 @@ and `.claude-plugin/marketplace.json` together.
   overlap ≥0.5) instead of spending a call — marked
   `_meta.classifier: "inherited"`; never chains from inherited/heuristic
   donors; manual triggers and stale sessions always go to the real classifier.
+- **Classifier CLI resolution lives in `resolveClassifierCli`, not in
+  `resolveCommand`** (`docs/adr/0001`). The install-directory fallback is
+  classifier knowledge, and `resolveCommand` stays a strict PATH lookup because
+  `checkNode` uses it to assert that `node` really is on PATH for the hooks.
+  `GET /api/health` publishes what the watcher resolved, which is the only
+  honest source for doctor's `Classifier reach`.
 - **Heuristic fallback (`src/classify/heuristic.js`):** when the classifier is
   unreachable, a deterministic low-confidence (0.25) classification is stored
   (category from project vote history, technologies from tool evidence) with
@@ -371,6 +377,12 @@ lint, types, tests.
   it is what users install against.
 
 ## Testing
+
+**`*.e2e.test.js` drives the full pipeline through a real external process.**
+Everything else is `*.test.js`, including the tests that shell out to `git` or
+bind a localhost port, because a thin integration is not an end-to-end run and a
+suffix that says otherwise would mislead. `node --test` takes both, so the split
+is a label for readers rather than a separate suite to run.
 
 Tests isolate completely by setting `process.env.STATUSLINE_HOME` to a fresh
 `mkdtemp` directory **before requiring anything from `src/`** — follow that
