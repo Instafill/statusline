@@ -47,11 +47,12 @@ personal work.
 ## Requirements
 
 - [Claude Code](https://claude.com/claude-code) installed and logged in
-- Node.js 18+ with `node` on PATH — the installed hooks invoke it by bare name
+- Node.js 22+ with `node` on PATH — the installed hooks invoke it by bare name
 - Windows or macOS
 
-No npm dependencies at all: there is nothing to `npm install`. Everything
-here runs on built-in Node modules.
+No runtime dependencies at all: there is nothing to `npm install`. Everything
+here runs on built-in Node modules. The `devDependencies` in `package.json` are
+the formatter and the linter, used only when working on statusline itself.
 
 ## Install
 

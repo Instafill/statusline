@@ -2,7 +2,7 @@
 .SYNOPSIS
   One-shot statusline setup for a new machine (Windows).
 .DESCRIPTION
-  Verifies Node 18+, installs the Claude Code hooks, registers the watcher to
+  Verifies Node 22+, installs the Claude Code hooks, registers the watcher to
   start at login, runs the preflight checks, and opens the UI.
   Safe to re-run: every step is idempotent.
 .EXAMPLE
@@ -34,10 +34,10 @@ Say "repo: $repo"
 
 Step 'Checking Node.js'
 $node = Get-Command node -ErrorAction SilentlyContinue
-if (-not $node) { Die 'Node.js is not installed or not on PATH. Get it from https://nodejs.org (18+), then re-run.' }
+if (-not $node) { Die 'Node.js is not installed or not on PATH. Get it from https://nodejs.org (22+), then re-run.' }
 $ver = (& node --version).TrimStart('v')
 $major = [int]($ver.Split('.')[0])
-if ($major -lt 18) { Die "Node $ver found, but statusline needs 18 or newer." }
+if ($major -lt 22) { Die "Node $ver found, but statusline needs 22 or newer." }
 Say "Node $ver at $($node.Source)"
 
 if (-not (Test-Path $cli)) { Die "Cannot find $cli - run this script from inside the cloned repo." }
