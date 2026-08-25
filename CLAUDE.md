@@ -27,7 +27,9 @@ or how experience is counted.
 1. **Zero runtime dependencies.** Everything under `src/`, `hooks/`,
    `statusline-segment.js` and `test/` is built-in Node only (`http`, `fs`,
    `node:test`) — never add an npm package, and `package.json` has no
-   `dependencies`.
+   `dependencies`. `devDependencies` carry the formatter and the linter and
+   nothing else: no shipped file may ever `require()` one, and neither installer
+   runs an install step, so a clone is complete the moment it lands.
 2. **Privacy.** Tool *outputs* and file *contents* are never captured — only
    prompts, paths, tool names, and secret-masked commands. Exactly TWO network
    egress channels exist: (a) the classifier call through the user's own
@@ -288,7 +290,10 @@ and `.claude-plugin/marketplace.json` together.
 | `node src/cli.js recompute` | Recompute project grouping |
 | `node src/cli.js refold [sid]` | Re-derive session state from event logs (all or one) — run after a `deriveState` change |
 | `node src/cli.js join <url> <code>` | Enroll this machine with a team deployment (one-time; per-machine credential, enables uploads) |
-| `npm test` | Full test suite, no LLM calls, no network |
+| `npm test` / `bun run test` | Full test suite, no LLM calls, no network. `bun run test`, never `bun test` — the latter bypasses the script and uses bun's own runner instead of `node --test` |
+| `npm run format` / `bun run format` | Rewrite every file Prettier owns |
+| `npm run lint` / `bun run lint` | ESLint, `--max-warnings=0` |
+| `npm run check` / `bun run check` | Format check, lint and tests in one gate |
 | `install.ps1` / `install.sh` | Bootstrap: verify Node, install hooks, autostart, doctor, open UI |
 
 ## Layout
@@ -337,6 +342,30 @@ public/                   index.html, style.css (thin layer on Bootstrap),
 test/                     node:test suites + fixture copy of a settings.json
                           carrying third-party hooks
 ```
+
+## Formatting and linting
+
+**After any code change, always run `bun run format && bun run lint`** (or the
+`npm run` equivalents). Both package managers are supported, so every script
+calls a bare binary name and never `npx` or `bunx`, and both lockfiles are
+committed and move together. `bun run check` is the single gate: format check,
+lint, tests.
+
+- **Prettier owns formatting**, `printWidth` 100. It does not touch
+  `public/vendor/` (vendored, minified), `test/fixtures/` (a file whose
+  byte-identical preservation is what `installer.test.js` asserts), the
+  lockfiles, or Markdown, which is hand-wrapped prose.
+- **ESLint fails on warnings.** Every lint script passes `--max-warnings=0`, so
+  a warning is a broken build and there is no slowly growing pile of them.
+- **The config lints two module systems separately.** Node code is CommonJS,
+  `public/js/**` is native browser ES modules with browser globals. A file that
+  lands in the wrong glob gets linted against the wrong environment and the
+  errors will look nonsensical.
+- **`eslint-plugin-n` reads `engines`**, so `no-unsupported-features` enforces
+  the Node floor this project promises rather than whatever version the
+  contributor happens to run. If a rule fires, the honest fixes are to use an
+  older API or to raise `engines` — never to widen the range casually, because
+  it is what users install against.
 
 ## Testing
 
