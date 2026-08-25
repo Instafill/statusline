@@ -344,6 +344,7 @@ src/upload/               team uploader: identity (machine.json UUID), join
                           heartbeats, egress logging) — loaded only when enabled
 src/server/               http (hardening, static, routes), api (JSON handlers)
 src/autostart.js, src/doctor.js, src/status-summary.js, src/util/
+scripts/bump-version.js   moves the version in all three manifests, nothing else
 public/                   index.html, style.css (thin layer on Bootstrap),
                           vendor/bootstrap.min.css + .bundle.min.js (vendored),
                           js/{app,router,core,components}.js,
