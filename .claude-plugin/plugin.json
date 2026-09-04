@@ -1,7 +1,7 @@
 {
   "name": "statusline",
   "displayName": "statusline",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "description": "Observes your Claude Code sessions locally and turns them into a record of the professional work you actually did — projects, technologies, depth. No file contents, no tool output.",
   "author": { "name": "Instafill", "url": "https://github.com/Instafill" },
   "homepage": "https://github.com/Instafill/statusline",
