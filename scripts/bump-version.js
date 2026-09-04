@@ -12,6 +12,7 @@ const VERSION_FILES = [
   'package.json',
   '.claude-plugin/plugin.json',
   '.claude-plugin/marketplace.json',
+  '.codex-plugin/plugin.json',
 ];
 
 /** @typedef {'patch' | 'minor' | 'major'} BumpKind */

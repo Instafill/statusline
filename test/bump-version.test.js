@@ -11,14 +11,20 @@ const assert = require('node:assert');
 const { nextVersion, bump, VERSION_FILES } = require('../scripts/bump-version');
 
 /**
- * A throwaway repo carrying the three manifests at the given versions.
- * @param {[string, string, string]} versions package, plugin, marketplace
+ * A throwaway repo carrying every manifest at the given versions.
+ * @param {[string, string, string, string]} versions package, claude plugin,
+ *   marketplace, codex plugin
  * @returns {string} the repo root
  */
 function repoAt(versions) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'statusline-bump-'));
 
   fs.mkdirSync(path.join(root, '.claude-plugin'));
+  fs.mkdirSync(path.join(root, '.codex-plugin'));
+  fs.writeFileSync(
+    path.join(root, '.codex-plugin', 'plugin.json'),
+    JSON.stringify({ name: 'statusline', version: versions[3] }, null, 2) + '\n'
+  );
   fs.writeFileSync(
     path.join(root, 'package.json'),
     JSON.stringify({ name: 'statusline', version: versions[0], private: true }, null, 2) + '\n'
@@ -48,8 +54,8 @@ test('a bump moves each part of the version on its own', () => {
   assert.strictEqual(nextVersion('1.9.9', 'minor'), '1.10.0');
 });
 
-test('all three manifests move together', () => {
-  const root = repoAt(['0.3.4', '0.3.4', '0.3.4']);
+test('every manifest moves together', () => {
+  const root = repoAt(['0.3.4', '0.3.4', '0.3.4', '0.3.4']);
   const res = bump(root, 'patch');
 
   assert.strictEqual(res.from, '0.3.4');
@@ -58,10 +64,21 @@ test('all three manifests move together', () => {
   for (const file of VERSION_FILES) {
     assert.match(read(root, file), /"version": "0\.3\.5"/, `${file} carries the new version`);
   }
+
+  // Named outright rather than read off VERSION_FILES, so a manifest missing
+  // from that list fails here instead of passing by not being looked at.
+  for (const file of [
+    'package.json',
+    '.claude-plugin/plugin.json',
+    '.claude-plugin/marketplace.json',
+    '.codex-plugin/plugin.json',
+  ]) {
+    assert.match(read(root, file), /"version": "0\.3\.5"/, `${file} carries the new version`);
+  }
 });
 
 test('only the version line changes', () => {
-  const root = repoAt(['0.3.4', '0.3.4', '0.3.4']);
+  const root = repoAt(['0.3.4', '0.3.4', '0.3.4', '0.3.4']);
   const before = read(root, 'package.json');
 
   bump(root, 'patch');
@@ -76,7 +93,7 @@ test('only the version line changes', () => {
 });
 
 test('a divergence is refused and every value is named', () => {
-  const root = repoAt(['0.3.4', '0.3.4', '0.3.3']);
+  const root = repoAt(['0.3.4', '0.3.4', '0.3.3', '0.3.4']);
 
   assert.throws(
     () => bump(root, 'patch'),

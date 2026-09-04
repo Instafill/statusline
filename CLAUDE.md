@@ -312,7 +312,7 @@ FOUR files; `test/plugin.test.js` fails the build if any one lags.
 | `npm run format` / `bun run format` | Rewrite every file Prettier owns |
 | `npm run lint` / `bun run lint` | ESLint, `--max-warnings=0` |
 | `npm run check` / `bun run check` | Format check, lint, types and tests in one gate |
-| `npm run bump` / `bun run bump` | Move the version in all three manifests (`patch`/`minor`/`major`, or interactive). Never tags, never pushes |
+| `npm run bump` / `bun run bump` | Move the version in every manifest (`patch`/`minor`/`major`, or interactive). Never tags, never pushes |
 | `install.ps1` / `install.sh` | Bootstrap: verify Node, install hooks, autostart, doctor, open UI |
 
 ## Layout
@@ -354,7 +354,7 @@ src/upload/               team uploader: identity (machine.json UUID), join
                           heartbeats, egress logging) — loaded only when enabled
 src/server/               http (hardening, static, routes), api (JSON handlers)
 src/autostart.js, src/doctor.js, src/status-summary.js, src/util/
-scripts/bump-version.js   moves the version in all three manifests, nothing else
+scripts/bump-version.js   moves the version in every manifest, nothing else
 public/                   index.html, style.css (thin layer on Bootstrap),
                           vendor/bootstrap.min.css + .bundle.min.js (vendored),
                           js/{app,router,core,components}.js,
