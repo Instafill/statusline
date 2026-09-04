@@ -224,6 +224,9 @@ const CAP_ID_RE = /^[a-z0-9-]{2,48}$/;
 const CAP_NAME_RE = /^[A-Za-z0-9&/+.,()' -]{1,48}$/;
 const CAP_GLOSS_RE = /^[A-Za-z0-9&/+.,;:()'" -]{1,140}$/;
 const CAP_DOMAIN_RE = /^[A-Za-z0-9&/+.,()' -]{1,32}$/;
+const CAP_POLICY_RE = /^[A-Za-z0-9&/+.,;:()'" -]{1,240}$/;
+const CAP_POLICY_FIELDS = ['includes', 'excludes', 'positive_examples', 'negative_examples'];
+const MAX_CAP_POLICY_ITEMS = 6;
 const MAX_CAP_ENTRIES = 500;
 const MAX_CAP_ALIASES = 1000;
 const WATERMARK_RE = /^[0-9T:.Z-]{1,32}$/;
@@ -292,6 +295,20 @@ function validateOverlay(obj) {
             ...(e.gloss !== undefined ? { gloss: e.gloss } : {}),
             ...(e.domain !== undefined ? { domain: e.domain } : {}),
           };
+          for (const field of CAP_POLICY_FIELDS) {
+            if (e[field] === undefined) continue;
+            if (!Array.isArray(e[field]) || e[field].length > MAX_CAP_POLICY_ITEMS) {
+              errors.push(`capabilities.${id}.${field}: invalid list`);
+              continue;
+            }
+            const items = [];
+            for (const item of e[field]) {
+              if (typeof item === 'string' && CAP_POLICY_RE.test(item) && !items.includes(item))
+                items.push(item);
+              else errors.push(`capabilities.${id}.${field}: dropped invalid item`);
+            }
+            clean[id][field] = items;
+          }
         } else {
           errors.push(`capabilities: dropped invalid entry ${JSON.stringify(id)}`);
         }

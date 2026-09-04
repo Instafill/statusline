@@ -1,0 +1,25 @@
+{
+  "name": "statusline",
+  "version": "0.3.5",
+  "description": "Read and operate the local Statusline session observer from Codex.",
+  "author": { "name": "Instafill", "url": "https://github.com/Instafill" },
+  "homepage": "https://github.com/Instafill/statusline",
+  "repository": "https://github.com/Instafill/statusline",
+  "license": "MIT",
+  "keywords": ["observability", "sessions", "experience", "capability", "local-first"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Statusline",
+    "shortDescription": "Understand the work evidenced by AI coding sessions",
+    "longDescription": "Query and operate the local Statusline observer from Codex, with evidence-first summaries and honest separation between observed work and catalog-reported capabilities.",
+    "developerName": "Instafill",
+    "category": "Productivity",
+    "capabilities": ["Read", "Local operations"],
+    "websiteURL": "https://github.com/Instafill/statusline",
+    "defaultPrompt": [
+      "What did I work on this week?",
+      "What capabilities does my recent work support?",
+      "Check whether Statusline capture is healthy."
+    ]
+  }
+}

@@ -89,8 +89,9 @@ every update, nothing outside the data dir may embed the agent's path:
 `src/agent-root.js` records the current root in `~/.statusline/agent.json`
 (written by every `cli.js` command and by hook-forward on SessionStart) and
 autostart points at a generated launcher in the data dir that resolves it at
-launch time. Version bumps go in `package.json`, `.claude-plugin/plugin.json`
-and `.claude-plugin/marketplace.json` together.
+launch time. Version bumps go in `package.json`, `.claude-plugin/plugin.json`,
+`.claude-plugin/marketplace.json` and `.codex-plugin/plugin.json` together —
+FOUR files; `test/plugin.test.js` fails the build if any one lags.
 
 ## Key facts and gotchas
 
@@ -185,8 +186,9 @@ and `.claude-plugin/marketplace.json` together.
   PARENT repo root when in a linked worktree — grouping folds the worktree
   into the parent project, parent ids unchanged), and `git_origin`
   (`remote.origin.url`, **credential-stripped before storage** — identifies
-  the same repo across machines/checkout paths). Re-folds fill new fields
-  retroactively while the repo exists on disk.
+  the same repo across machines/checkout paths, and is therefore the grouping
+  key for repo-backed projects). Re-folds fill new fields retroactively while
+  the repo exists on disk.
 - **Aggregation foundation (session → project → practitioner):** grouping-core
   turns catch-all home-dir / no-cwd sessions into flagged per-session
   **singletons** (`key.kind:'session'`, rendered only as one "Miscellaneous
@@ -200,8 +202,16 @@ and `.claude-plugin/marketplace.json` together.
   active_days/machine_ids distributions, and `aggregate.technologies` is an
   **array** keyed by `canonical`, each entry carrying `substantive_sessions`,
   `first_at`/`last_at`, and a ≤25-row per-session evidence trace (counts stay
-  exact). Merge suggestions: a shared normalized origin ALONE crosses the
-  (0.5) threshold. **Experience** (`src/experience-core.js`, pure): reduces
+  exact). **A repo is keyed by its remote, not its path** (`key.kind:'origin'`,
+  the normalized `git_origin`), so every clone of it — another machine, a
+  second checkout, a worktree — is ONE project with no curation step; a repo
+  with no remote keeps the historical `git_root` key, and the session's own
+  origin outranks the per-root fallback so two people's identically-named
+  folders stay apart. `roots` lists every checkout the project folded in.
+  Because that changed repo-backed project ids once, `remapCorrectionIds`
+  translates renames/merges/dismissals/pins from the old path-derived ids.
+  Merge suggestions no longer carry a `same_origin` term — a shared origin is
+  now a grouping key, so two projects cannot have one. **Experience** (`src/experience-core.js`, pure): reduces
   WITHIN a project first, then counts DISTINCT PROJECTS — session volume can
   never inflate; learning/personal/unclassified are tallied in
   `totals.excluded`, never as capability experience (user labels win both

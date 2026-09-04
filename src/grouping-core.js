@@ -146,6 +146,48 @@ function resolveMerged(corrections, id, depth = 0) {
   return id;
 }
 
+// Rewrite a corrections map from old project ids to current ones. Used when
+// repo identity moves from the checkout path to the remote URL: the ids change,
+// but what the user decided about those projects must not.
+function remapCorrectionIds(corrections, idRemap) {
+  const to = (id) => idRemap.get(id) || id;
+
+  const projectsCorr = {};
+  for (const [id, entry] of Object.entries(corrections.projects || {})) {
+    const target = to(id);
+    const moved = { ...entry };
+    if (moved.merged_into) {
+      const dest = to(moved.merged_into);
+      // Both sides of a hand-made merge can now BE the same project — that
+      // merge has simply come true, so drop it rather than leave a self-loop.
+      if (dest === target) delete moved.merged_into;
+      else moved.merged_into = dest;
+    }
+    // Two clones collapsing into one project can carry two renames. First
+    // writer wins: they were always the same project, so either name is
+    // defensible and only stability matters.
+    projectsCorr[target] = projectsCorr[target] ? { ...moved, ...projectsCorr[target] } : moved;
+  }
+
+  const sessionsCorr = { ...(corrections.sessions || {}) };
+  for (const [sid, corr] of Object.entries(sessionsCorr)) {
+    if (corr && corr.project_id && idRemap.has(corr.project_id)) {
+      sessionsCorr[sid] = { ...corr, project_id: idRemap.get(corr.project_id) };
+    }
+  }
+
+  return {
+    ...corrections,
+    projects: projectsCorr,
+    sessions: sessionsCorr,
+    dismissed_merges: (corrections.dismissed_merges || [])
+      .map((pair) => pair.map(to))
+      // A dismissal of "are these two the same?" is meaningless once they are
+      // one project by construction.
+      .filter((pair) => pair[0] !== pair[1]),
+  };
+}
+
 const EVIDENCE_ROWS_CAP = 25;
 
 // states + corrections -> { projects: [...] } (sorted, not stamped/persisted).
@@ -159,33 +201,89 @@ function groupSessions(states, corrections, opts = WINDOWS_PATH_OPTS) {
   // worktree folds into its parent repo (git_main_root), so the parent's
   // project id — unchanged — absorbs the worktree's sessions; both the parent
   // root and the worktree's own path absorb loose cwds beneath them.
+  //
+  // A repo is identified by its REMOTE, not by where it happens to sit on disk:
+  // git_root is a different string on every machine (and on a second clone on
+  // one machine), while git_origin is the same everywhere. Keying repo-backed
+  // sessions on the origin is what folds one repo's work into ONE project
+  // across the fleet with no curation step. A shared origin used to be a merge
+  // *suggestion* only, so every checkout of a repo showed up as its own project
+  // until somebody clicked — for a team on N machines that is N-1 duplicates of
+  // everything, and each duplicate splits the project-distinct counting that
+  // experience is built on.
+  //
+  // A session's OWN origin always wins, and the per-root map below only fills
+  // gaps. That order matters in both directions: two people really do both keep
+  // a `C:\work\api`, and letting a path decide would merge two unrelated repos
+  // (which is what keying on the path did outright); while a repo re-cloned at
+  // a path some other repo used to occupy has to split off, not inherit.
+  //
+  // The gap it fills is sessions that captured no origin — recorded before the
+  // repo had a remote, or while gitInfo failed — which would otherwise strand
+  // as a path-keyed twin of the project they belong to. Newest capture wins, so
+  // a repo whose remote URL changes carries its origin-less history forward.
+  const originByRoot = new Map(); // normalized root -> newest origin seen there
+  const byRecency = [...active].sort((a, b) =>
+    String(a.last_event_at || a.created_at || '').localeCompare(
+      String(b.last_event_at || b.created_at || '')
+    )
+  );
+  for (const s of byRecency) {
+    const origin = normOrigin(s.git_origin);
+    if (!origin) continue;
+    for (const root of [s.git_main_root, s.git_root])
+      if (root) originByRoot.set(normKey(root), origin);
+  }
+
+  // A repo with no remote anywhere has never left the machine it is on, so
+  // there its path IS its identity and the historical git_root key stands.
+  const repoKey = (s) => {
+    const root = s.git_main_root || s.git_root;
+    if (!root) return null;
+    const origin = normOrigin(s.git_origin) || originByRoot.get(normKey(root));
+    return origin ? { kind: 'origin', value: origin } : { kind: 'git_root', value: normKey(root) };
+  };
+
   const gitRoots = new Map(); // normalized root -> [key, basis]
   for (const s of active) {
-    if (s.git_main_root) {
-      const parent = { kind: 'git_root', value: normKey(s.git_main_root) };
-      gitRoots.set(normKey(s.git_main_root), [parent, 'cwd_absorbed']);
-      if (s.git_root) gitRoots.set(normKey(s.git_root), [parent, 'cwd_absorbed']);
-    } else if (s.git_root) {
-      gitRoots.set(normKey(s.git_root), [
-        { kind: 'git_root', value: normKey(s.git_root) },
-        'cwd_absorbed',
-      ]);
-    }
+    const key = repoKey(s);
+    if (!key) continue;
+
+    for (const root of [s.git_main_root, s.git_root])
+      if (root) gitRoots.set(normKey(root), [key, 'cwd_absorbed']);
   }
 
   const keyFor = (s) => {
-    if (s.git_main_root) return [{ kind: 'git_root', value: normKey(s.git_main_root) }, 'worktree'];
-    if (s.git_root) return [{ kind: 'git_root', value: normKey(s.git_root) }, 'git_root'];
+    const key = repoKey(s);
+    if (key) return [key, s.git_main_root ? 'worktree' : 'git_root'];
     if (s.primary_cwd) {
       const cwd = normKey(s.primary_cwd);
-      for (const [root, [key, basis]] of gitRoots) {
-        if (cwd === root || cwd.startsWith(root + sep)) return [key, basis];
+      for (const [root, [rootKey, basis]] of gitRoots) {
+        if (cwd === root || cwd.startsWith(root + sep)) return [rootKey, basis];
       }
       if (isCatchAllCwd(cwd)) return [{ kind: 'session', value: s.session_id }, 'singleton'];
       return [{ kind: 'cwd', value: cwd }, 'cwd'];
     }
     return [{ kind: 'session', value: s.session_id }, 'singleton'];
   };
+
+  // A repo-backed project's id used to be a hash of its checkout path and is
+  // now a hash of its origin, so every correction the user made by hand —
+  // renames, manual merges, dismissed suggestions, pinned sessions — is filed
+  // under an id that no longer names anything. Translate the correction map
+  // into current-id space instead of silently discarding that work. Pure remap
+  // on a local copy; a no-op where nothing was ever corrected (the cloud passes
+  // no project corrections at all).
+  const idRemap = new Map(); // legacy path-derived id -> current id
+  for (const s of active) {
+    const key = repoKey(s);
+    if (!key || key.kind !== 'origin') continue;
+    const current = projectIdOf(key.kind, key.value);
+    for (const root of [s.git_main_root, s.git_root]) {
+      if (root) idRemap.set(projectIdOf('git_root', normKey(root)), current);
+    }
+  }
+  if (idRemap.size) corrections = remapCorrectionIds(corrections, idRemap);
 
   const projects = new Map(); // id -> project
   const ensureProject = (id, key) => {
@@ -241,6 +339,19 @@ function groupSessions(states, corrections, opts = WINDOWS_PATH_OPTS) {
           d.pathKeys.has(proj.key.value)
         )
           return d;
+
+        // An origin-keyed project carries no path in its key, but a registry
+        // entry may well have been declared against the git_root someone was
+        // looking at when they declared it — match the members' roots too, or
+        // moving to origin keys would quietly unclaim those engagements.
+        if (d.pathKeys.size && proj.key.kind === 'origin') {
+          for (const s of proj._states) {
+            for (const root of [s.git_main_root, s.git_root]) {
+              if (root && d.pathKeys.has(normKey(root))) return d;
+            }
+          }
+        }
+
         if (d.originKeys.size) {
           for (const s of proj._states) {
             const o = normOrigin(s.git_origin);
@@ -292,6 +403,7 @@ function groupSessions(states, corrections, opts = WINDOWS_PATH_OPTS) {
     const daySet = new Set();
     const machineSet = new Set();
     const originSet = new Set();
+    const rootSet = new Set();
     for (const s of proj._states) {
       if (!agg.first_seen || s.created_at < agg.first_seen) agg.first_seen = s.created_at;
       if (!agg.last_seen || s.last_event_at > agg.last_seen) agg.last_seen = s.last_event_at;
@@ -299,6 +411,7 @@ function groupSessions(states, corrections, opts = WINDOWS_PATH_OPTS) {
       if (s.machine_id) machineSet.add(s.machine_id);
       const rawOrigin = normOrigin(s.git_origin);
       if (rawOrigin) originSet.add(rawOrigin);
+      for (const root of [s.git_main_root, s.git_root]) if (root) rootSet.add(normKey(root));
       const corr = corrections.sessions[s.session_id] || {};
       const cls = effectiveClassification(s, corrections);
       if (!cls) continue;
@@ -403,6 +516,10 @@ function groupSessions(states, corrections, opts = WINDOWS_PATH_OPTS) {
     proj._hints = hints;
     proj._techWeights = techWeights;
     proj._origins = originSet;
+    // Every checkout path this repo was worked in. More than one means the
+    // origin key folded clones together — the evidence for a merge nobody had
+    // to approve, and the only way to see it happened.
+    proj._roots = rootSet;
 
     // Names: declared engagement name outranks a local rename; path-derived
     // basenames never apply to manual/singleton/engagement keys.
@@ -454,6 +571,7 @@ function groupSessions(states, corrections, opts = WINDOWS_PATH_OPTS) {
         session_ids: p.session_ids,
         membership: p.membership,
         origins: [...p._origins],
+        roots: [...p._roots],
         aggregate: p.aggregate,
         suggested_merges: p.suggested_merges,
       }))
@@ -469,11 +587,11 @@ function similarity(a, b, basename = crossPlatformBasename) {
     ? 1
     : 0;
 
-  // Same remote origin IS the same repo — this signal alone crosses the
-  // suggestion threshold (checkout-path mismatches across machines).
-  let originMatch = 0;
-  for (const o of a._origins) if (b._origins.has(o)) originMatch = 1;
-
+  // There is deliberately no same-origin term here any more. A shared origin
+  // used to be the strongest signal — enough on its own to cross the threshold
+  // — but it is now a grouping KEY, so two projects can no longer share one and
+  // the term could only ever fire again after somebody hand-pinned sessions
+  // away from their repo. Suggesting they undo that is not help.
   const pathKinds = new Set(['git_root', 'cwd']);
   const basenameMatch =
     pathKinds.has(a.key.kind) &&
@@ -512,7 +630,6 @@ function similarity(a, b, basename = crossPlatformBasename) {
   }
 
   const parts = [
-    ['same_origin', 0.6 * originMatch],
     ['same_basename', 0.2 * basenameMatch],
     ['hint_overlap', 0.35 * hintOverlap],
     ['tech_overlap', 0.25 * techOverlap],

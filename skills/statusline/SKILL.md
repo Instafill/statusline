@@ -1,7 +1,6 @@
 ---
 name: statusline
-description: "Read and operate statusline, the local observer of Claude Code sessions on this machine. Use when the user asks what they worked on, what capabilities their sessions support, which projects or technologies appear, how much experience the evidence backs, why a session is unclassified or stuck pending, whether capture/the watcher/uploads are healthy, or asks to classify, re-fold, recompute or diagnose statusline — and to finish setup: start the watcher, register it at login, or join/connect/enroll this machine with a team deployment using an enroll code. Covers the ~/.statusline data dir and the local API on 127.0.0.1:45817."
-user-invocable: true
+description: "Read and operate Statusline from Claude Code or Codex. Use when the user asks what they worked on, what capabilities their captured sessions support, which projects or technologies appear, how much experience the evidence backs, why a session is unclassified or stuck pending, whether capture/the watcher/uploads are healthy, or asks to classify, re-fold, recompute or diagnose Statusline — and to finish setup: start the watcher, register it at login, or join/connect/enroll this machine with a team deployment using an enroll code. Covers the ~/.statusline data dir and local API on 127.0.0.1:45817. Production capture currently observes Claude Code; Codex transcript ingestion remains a research workflow."
 allowed-tools:
   - Bash
   - Read
@@ -9,10 +8,17 @@ allowed-tools:
 
 # statusline
 
-statusline watches Claude Code sessions on this machine, classifies the
+Statusline watches supported sessions on this machine, classifies the
 professional work in each one, groups sessions into projects, and derives
 practitioner experience from them. Everything is local: `~/.statusline`
 (override `STATUSLINE_HOME`), served at `http://127.0.0.1:45817`.
+
+The skill itself works in both Claude Code and Codex. The current production
+collector still captures Claude Code sessions through Claude hooks. Do not
+imply that installing the Codex plugin makes Codex transcripts enter the
+production profile. Codex evidence is supported by the provider-neutral
+research substrate only and remains subject to its separate consent, privacy,
+review, and promotion gates.
 
 ## Evidence first, catalog second
 
@@ -52,7 +58,9 @@ node ~/.claude/skills/statusline/sl.js <command>
 On Windows that path works from Git Bash; from PowerShell use
 `node "$env:USERPROFILE\.claude\skills\statusline\sl.js"`. If this skill was
 installed as part of a plugin, the script is at
-`${CLAUDE_PLUGIN_ROOT}/skills/statusline/sl.js` instead.
+`${CLAUDE_PLUGIN_ROOT}/skills/statusline/sl.js` in Claude Code. In Codex, run
+the bundled `sl.js` beside this `SKILL.md`; resolve its installed skill path
+from the active plugin rather than assuming a Claude directory.
 
 | Command | Shows |
 |---|---|

@@ -49,7 +49,6 @@ test('SKILL.md declares the frontmatter Claude Code needs to load it', () => {
   // The description is the ONLY thing the model sees when deciding whether the
   // skill is relevant — a terse one means the skill never fires.
   assert.ok(fm.description.length > 120, 'description must describe when to use the skill');
-  assert.strictEqual(fm['user-invocable'], 'true');
   assert.ok(Array.isArray(fm['allowed-tools']) && fm['allowed-tools'].includes('Bash'));
 });
 

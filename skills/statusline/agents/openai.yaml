@@ -1,0 +1,7 @@
+interface:
+  display_name: 'Statusline'
+  short_description: 'Inspect evidence from AI coding sessions'
+  default_prompt: 'Use $statusline to summarize what my recent work demonstrates.'
+
+policy:
+  allow_implicit_invocation: true
