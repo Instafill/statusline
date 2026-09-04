@@ -21,9 +21,10 @@ function watcherCard(status) {
 function hooksCard(inst) {
   const entries = inst.entries
     .map(
-      (e) => `<div>${e.installed ? '✅' : '❌'} ${esc(e.event)}${
-        e.matcher ? ` <span class="dim small">[${esc(e.matcher)}]</span>` : ''
-      }</div>`
+      (e) =>
+        `<div>${e.installed ? '✅' : '❌'} ${esc(e.event)}${
+          e.matcher ? ` <span class="dim small">[${esc(e.matcher)}]</span>` : ''
+        }</div>`
     )
     .join('');
   return `<div class="card"><h2>Hooks <span class="hint">${esc(inst.settingsPath)}</span></h2>
@@ -48,7 +49,12 @@ function enrollmentCard(status, cfg) {
       ${metaGrid([
         ['Endpoint', esc(up.endpoint || '—')],
         ['Machine id', `<code>${esc(status.machine_id || '—')}</code>`],
-        ['Credential', up.token ? '<span class="ok">stored (write-only — never displayed)</span>' : '<span class="bad">missing — re-enroll</span>'],
+        [
+          'Credential',
+          up.token
+            ? '<span class="ok">stored (write-only — never displayed)</span>'
+            : '<span class="bad">missing — re-enroll</span>',
+        ],
         ['Content', 'classification + metadata only — prompt text never uploads (hard rule)'],
       ])}
       <div class="note">Every upload attempt is in the <a href="/egress">Egress log</a>. Health check:

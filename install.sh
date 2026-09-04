@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # One-shot statusline setup for a new machine (macOS).
-# Verifies Node 18+, installs the Claude Code hooks, registers the watcher to
+# Verifies Node 22+, installs the Claude Code hooks, registers the watcher to
 # start at login, runs the preflight checks, and opens the UI.
 # Safe to re-run: every step is idempotent.
 #
@@ -35,9 +35,9 @@ printf '\nstatusline setup\n'
 say "repo: $REPO"
 
 step 'Checking Node.js'
-command -v node >/dev/null 2>&1 || die 'Node.js is not installed or not on PATH. Install 18+ from https://nodejs.org, then re-run.'
+command -v node >/dev/null 2>&1 || die 'Node.js is not installed or not on PATH. Install 22+ from https://nodejs.org, then re-run.'
 VER="$(node --version)"; VER="${VER#v}"
-[ "${VER%%.*}" -ge 18 ] || die "Node $VER found, but statusline needs 18 or newer."
+[ "${VER%%.*}" -ge 22 ] || die "Node $VER found, but statusline needs 22 or newer."
 say "Node $VER at $(command -v node)"
 
 [ -f "$CLI" ] || die "Cannot find $CLI - run this script from inside the cloned repo."

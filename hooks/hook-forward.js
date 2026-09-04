@@ -36,7 +36,8 @@ try {
       // A stray UTF-8 BOM would cost us the CLAUDE_PID injection here and make
       // the spooled event unfoldable later. Dropped before either step.
       let data = Buffer.concat(chunks);
-      if (data.length >= 3 && data[0] === 0xef && data[1] === 0xbb && data[2] === 0xbf) data = data.slice(3);
+      if (data.length >= 3 && data[0] === 0xef && data[1] === 0xbb && data[2] === 0xbf)
+        data = data.slice(3);
       if (data.length > 0) {
         // Record the owning Claude Code process (CLAUDE_PID is set by Claude
         // Code in hook processes) so the watcher can tell whether the session
@@ -82,7 +83,10 @@ try {
             }
             if (known !== root) {
               const tmpRec = path.join(tmpDir, `agent-${process.pid}.json`);
-              fs.writeFileSync(tmpRec, JSON.stringify({ v: 1, root, recorded_at: new Date().toISOString() }, null, 2));
+              fs.writeFileSync(
+                tmpRec,
+                JSON.stringify({ v: 1, root, recorded_at: new Date().toISOString() }, null, 2)
+              );
               fs.renameSync(tmpRec, record);
             }
           } catch (e) {

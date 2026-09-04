@@ -41,7 +41,10 @@ function createScheduler({ onSessionWritten } = {}) {
           // toward the backoff.
           if (/^auth_error/.test(state.classifier_error || '')) {
             consecutiveAuthErrors++;
-            if (!authOk()) log.warn('classifier auth failing repeatedly — pausing automatic classification (retry manually from the UI after `claude` login)');
+            if (!authOk())
+              log.warn(
+                'classifier auth failing repeatedly — pausing automatic classification (retry manually from the UI after `claude` login)'
+              );
           } else if (state.classification_state === 'classified') {
             consecutiveAuthErrors = 0;
           }
@@ -87,12 +90,16 @@ function createScheduler({ onSessionWritten } = {}) {
     for (const s of sessions.listSessions()) {
       const heuristic =
         s.classification_state === 'classified' &&
-        s.classification && s.classification._meta && s.classification._meta.classifier === 'heuristic';
+        s.classification &&
+        s.classification._meta &&
+        s.classification._meta.classifier === 'heuristic';
       if (!ELIGIBLE.has(s.classification_state) && !heuristic) continue;
-      if (heuristic && Date.now() - new Date(s.classified_at || 0).getTime() < UPGRADE_SPACING_MS) continue;
+      if (heuristic && Date.now() - new Date(s.classified_at || 0).getTime() < UPGRADE_SPACING_MS)
+        continue;
       if (s.counts.turns < 1) continue;
       const idle = Date.now() - new Date(s.last_event_at).getTime();
-      if (Number.isFinite(idle) && idle >= idleMs) enqueue(s.session_id, heuristic ? 'upgrade' : 'idle');
+      if (Number.isFinite(idle) && idle >= idleMs)
+        enqueue(s.session_id, heuristic ? 'upgrade' : 'idle');
     }
   }
 

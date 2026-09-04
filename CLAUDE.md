@@ -27,7 +27,11 @@ or how experience is counted.
 1. **Zero runtime dependencies.** Everything under `src/`, `hooks/`,
    `statusline-segment.js` and `test/` is built-in Node only (`http`, `fs`,
    `node:test`) — never add an npm package, and `package.json` has no
-   `dependencies`.
+   `dependencies`. `devDependencies` carry development tooling only, the kind
+   that reads the source without becoming part of it: formatter, linter, type
+   checker. The test is whether a shipped file could ever `require()` one. None
+   may, neither installer runs an install step, and a clone is complete the
+   moment it lands.
 2. **Privacy.** Tool *outputs* and file *contents* are never captured — only
    prompts, paths, tool names, and secret-masked commands. Exactly TWO network
    egress channels exist: (a) the classifier call through the user's own
@@ -121,6 +125,12 @@ FOUR files; `test/plugin.test.js` fails the build if any one lags.
   overlap ≥0.5) instead of spending a call — marked
   `_meta.classifier: "inherited"`; never chains from inherited/heuristic
   donors; manual triggers and stale sessions always go to the real classifier.
+- **Classifier CLI resolution lives in `resolveClassifierCli`, not in
+  `resolveCommand`** (`docs/adr/0001`). The install-directory fallback is
+  classifier knowledge, and `resolveCommand` stays a strict PATH lookup because
+  `checkNode` uses it to assert that `node` really is on PATH for the hooks.
+  `GET /api/health` publishes what the watcher resolved, which is the only
+  honest source for doctor's `Classifier reach`.
 - **Heuristic fallback (`src/classify/heuristic.js`):** when the classifier is
   unreachable, a deterministic low-confidence (0.25) classification is stored
   (category from project vote history, technologies from tool evidence) with
@@ -298,7 +308,11 @@ FOUR files; `test/plugin.test.js` fails the build if any one lags.
 | `node src/cli.js recompute` | Recompute project grouping |
 | `node src/cli.js refold [sid]` | Re-derive session state from event logs (all or one) — run after a `deriveState` change |
 | `node src/cli.js join <url> <code>` | Enroll this machine with a team deployment (one-time; per-machine credential, enables uploads) |
-| `npm test` | Full test suite, no LLM calls, no network |
+| `npm test` / `bun run test` | Full test suite, no LLM calls, no network. `bun run test`, never `bun test` — the latter bypasses the script and uses bun's own runner instead of `node --test` |
+| `npm run format` / `bun run format` | Rewrite every file Prettier owns |
+| `npm run lint` / `bun run lint` | ESLint, `--max-warnings=0` |
+| `npm run check` / `bun run check` | Format check, lint, types and tests in one gate |
+| `npm run bump` / `bun run bump` | Move the version in every manifest (`patch`/`minor`/`major`, or interactive). Never tags, never pushes |
 | `install.ps1` / `install.sh` | Bootstrap: verify Node, install hooks, autostart, doctor, open UI |
 
 ## Layout
@@ -340,6 +354,7 @@ src/upload/               team uploader: identity (machine.json UUID), join
                           heartbeats, egress logging) — loaded only when enabled
 src/server/               http (hardening, static, routes), api (JSON handlers)
 src/autostart.js, src/doctor.js, src/status-summary.js, src/util/
+scripts/bump-version.js   moves the version in every manifest, nothing else
 public/                   index.html, style.css (thin layer on Bootstrap),
                           vendor/bootstrap.min.css + .bundle.min.js (vendored),
                           js/{app,router,core,components}.js,
@@ -348,7 +363,37 @@ test/                     node:test suites + fixture copy of a settings.json
                           carrying third-party hooks
 ```
 
+## Formatting and linting
+
+**After any code change, always run `bun run format && bun run lint`** (or the
+`npm run` equivalents). Both package managers are supported, so every script
+calls a bare binary name and never `npx` or `bunx`, and both lockfiles are
+committed and move together. `bun run check` is the single gate: format check,
+lint, types, tests.
+
+- **Prettier owns formatting**, `printWidth` 100. It does not touch
+  `public/vendor/` (vendored, minified), `test/fixtures/` (a file whose
+  byte-identical preservation is what `installer.test.js` asserts), the
+  lockfiles, or Markdown, which is hand-wrapped prose.
+- **ESLint fails on warnings.** Every lint script passes `--max-warnings=0`, so
+  a warning is a broken build and there is no slowly growing pile of them.
+- **The config lints two module systems separately.** Node code is CommonJS,
+  `public/js/**` is native browser ES modules with browser globals. A file that
+  lands in the wrong glob gets linted against the wrong environment and the
+  errors will look nonsensical.
+- **`eslint-plugin-n` reads `engines`**, so `no-unsupported-features` enforces
+  the Node floor this project promises rather than whatever version the
+  contributor happens to run. If a rule fires, the honest fixes are to use an
+  older API or to raise `engines` — never to widen the range casually, because
+  it is what users install against.
+
 ## Testing
+
+**`*.e2e.test.js` drives the full pipeline through a real external process.**
+Everything else is `*.test.js`, including the tests that shell out to `git` or
+bind a localhost port, because a thin integration is not an end-to-end run and a
+suffix that says otherwise would mislead. `node --test` takes both, so the split
+is a label for readers rather than a separate suite to run.
 
 Tests isolate completely by setting `process.env.STATUSLINE_HOME` to a fresh
 `mkdtemp` directory **before requiring anything from `src/`** — follow that
@@ -359,3 +404,30 @@ everything it doesn't own. No test may invoke the real classifier; exercise
 that path manually with `node src/cli.js classify <sid>`. User corrections
 always win: any new derived data must flow through `corrections.json` overlays
 on recompute, never overwrite them.
+
+## Agent skills
+
+### Issue tracker
+
+Two surfaces. Default is Linear, team `Instafill`, project **`Statusline`**, via
+the Linear MCP tools. Everything from this repo goes in that project - the team
+is shared with four other repos, so the project is what says which repo an issue
+is about. Local markdown under `.scratch/` is used only when the user explicitly
+asks for a local or scratch ticket. Never mix the two inside one effort. GitHub
+PRs are not a triage surface. A sub-issue of an epic carries both `parentId` and
+`relatedTo` the epic, and inherits its siblings' project, labels and priority.
+The agent moves its own ticket to `In Progress`, then `Testing`, then `Done`
+after the merge. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+In Linear the triage roles are mostly statuses: `needs-triage` is `Backlog`,
+`ready-for-human` is `Todo`, `wontfix` is `Canceled`. Two roles carry a real
+label: `Ready for agent` and `Needs info`. Categories are the existing `Bug` /
+`Feature` / `Improvement` labels. On the local surface all five roles stay plain
+labels. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` and `docs/adr/` at the repo root, read after
+`CLAUDE.md` and `ARCHITECTURE.md`. See `docs/agents/domain.md`.

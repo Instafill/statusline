@@ -66,7 +66,8 @@ function reduceProject(project, sessionStates, corrections) {
     // The user's label always wins; otherwise the classifier must both name a
     // professional category AND assert professional_work (contradictory docs
     // are excluded — under-claiming is the safe direction).
-    const included = PROFESSIONAL_CATS.has(cat) && (corr.label ? true : cls.professional_work === true);
+    const included =
+      PROFESSIONAL_CATS.has(cat) && (corr.label ? true : cls.professional_work === true);
     if (!included) continue;
     red.sessions++;
     red.session_ids.push(s.session_id);
@@ -75,11 +76,13 @@ function reduceProject(project, sessionStates, corrections) {
     if (!red.first_seen || s.created_at < red.first_seen) red.first_seen = s.created_at;
     if (!red.last_seen || s.last_event_at > red.last_seen) red.last_seen = s.last_event_at;
     const depth = cls.work_depth || null;
-    if (depth && (!red.depth_max || depthRank[depth] > depthRank[red.depth_max])) red.depth_max = depth;
+    if (depth && (!red.depth_max || depthRank[depth] > depthRank[red.depth_max]))
+      red.depth_max = depth;
     const via = (cls._meta && cls._meta.classifier) || 'unknown';
     red.classifiers.add(via);
     const conf = typeof cls.confidence === 'number' ? cls.confidence : null;
-    if (conf !== null && (red.min_confidence === null || conf < red.min_confidence)) red.min_confidence = conf;
+    if (conf !== null && (red.min_confidence === null || conf < red.min_confidence))
+      red.min_confidence = conf;
     for (const tech of cls.technologies || []) {
       for (const k of canonicalsOfTech(tech)) {
         const t = red.techs[k] || {
@@ -104,13 +107,17 @@ function reduceProject(project, sessionStates, corrections) {
         if (tech.verified) {
           t.verified = true;
           t.verified_sessions++;
-          if (!t.verified_max_evidence || EVIDENCE_WEIGHT[tech.evidence] > EVIDENCE_WEIGHT[t.verified_max_evidence]) {
+          if (
+            !t.verified_max_evidence ||
+            EVIDENCE_WEIGHT[tech.evidence] > EVIDENCE_WEIGHT[t.verified_max_evidence]
+          ) {
             t.verified_max_evidence = tech.evidence;
           }
         }
         for (const b of tech.basis || []) t.basis.add(b);
         t.classifiers.add(via);
-        if (conf !== null && (t.min_confidence === null || conf < t.min_confidence)) t.min_confidence = conf;
+        if (conf !== null && (t.min_confidence === null || conf < t.min_confidence))
+          t.min_confidence = conf;
         if (!t.first || s.created_at < t.first) t.first = s.created_at;
         if (!t.last || s.last_event_at > t.last) t.last = s.last_event_at;
         t.categories.add(cat);
@@ -133,7 +140,8 @@ function reduceProject(project, sessionStates, corrections) {
       b.sessions++;
       if (grounded) b.grounded_sessions++;
       b.classifiers.add(via);
-      if (conf !== null && (b.min_confidence === null || conf < b.min_confidence)) b.min_confidence = conf;
+      if (conf !== null && (b.min_confidence === null || conf < b.min_confidence))
+        b.min_confidence = conf;
       if (!b.first || s.created_at < b.first) b.first = s.created_at;
       if (!b.last || s.last_event_at > b.last) b.last = s.last_event_at;
       b.categories.add(cat);
@@ -161,12 +169,18 @@ function mergeMisc(reductions) {
     for (const c of red.categories) out.categories.add(c);
     for (const i of red.industries) out.industries.add(i);
     for (const c of red.classifiers) out.classifiers.add(c);
-    if (red.depth_max && (!out.depth_max || depthRank[red.depth_max] > depthRank[out.depth_max])) out.depth_max = red.depth_max;
-    if (red.min_confidence !== null && (out.min_confidence === null || red.min_confidence < out.min_confidence)) {
+    if (red.depth_max && (!out.depth_max || depthRank[red.depth_max] > depthRank[out.depth_max]))
+      out.depth_max = red.depth_max;
+    if (
+      red.min_confidence !== null &&
+      (out.min_confidence === null || red.min_confidence < out.min_confidence)
+    ) {
       out.min_confidence = red.min_confidence;
     }
-    if (!out.first_seen || (red.first_seen && red.first_seen < out.first_seen)) out.first_seen = red.first_seen;
-    if (!out.last_seen || (red.last_seen && red.last_seen > out.last_seen)) out.last_seen = red.last_seen;
+    if (!out.first_seen || (red.first_seen && red.first_seen < out.first_seen))
+      out.first_seen = red.first_seen;
+    if (!out.last_seen || (red.last_seen && red.last_seen > out.last_seen))
+      out.last_seen = red.last_seen;
     for (const [k, t] of Object.entries(red.techs)) {
       const cur = out.techs[k];
       if (!cur) {
@@ -180,12 +194,19 @@ function mergeMisc(reductions) {
         cur.name = t.name;
       }
       if (t.verified) cur.verified = true;
-      if (t.verified_max_evidence && (!cur.verified_max_evidence || EVIDENCE_WEIGHT[t.verified_max_evidence] > EVIDENCE_WEIGHT[cur.verified_max_evidence])) {
+      if (
+        t.verified_max_evidence &&
+        (!cur.verified_max_evidence ||
+          EVIDENCE_WEIGHT[t.verified_max_evidence] > EVIDENCE_WEIGHT[cur.verified_max_evidence])
+      ) {
         cur.verified_max_evidence = t.verified_max_evidence;
       }
       for (const b of t.basis) cur.basis.add(b);
       for (const c of t.classifiers) cur.classifiers.add(c);
-      if (t.min_confidence !== null && (cur.min_confidence === null || t.min_confidence < cur.min_confidence)) {
+      if (
+        t.min_confidence !== null &&
+        (cur.min_confidence === null || t.min_confidence < cur.min_confidence)
+      ) {
         cur.min_confidence = t.min_confidence;
       }
       if (!cur.first || (t.first && t.first < cur.first)) cur.first = t.first;
@@ -201,7 +222,10 @@ function mergeMisc(reductions) {
       cur.sessions += b.sessions;
       cur.grounded_sessions += b.grounded_sessions;
       for (const c of b.classifiers) cur.classifiers.add(c);
-      if (b.min_confidence !== null && (cur.min_confidence === null || b.min_confidence < cur.min_confidence)) {
+      if (
+        b.min_confidence !== null &&
+        (cur.min_confidence === null || b.min_confidence < cur.min_confidence)
+      ) {
         cur.min_confidence = b.min_confidence;
       }
       if (!cur.first || (b.first && b.first < cur.first)) cur.first = b.first;
@@ -235,8 +259,10 @@ function buildDoc(practitioner, perProject, corrections) {
     for (const s of sessions) {
       totals.sessions++;
       if (project.singleton) totals.excluded.misc_sessions++;
-      if (!s.created_at || !totals.first_seen || s.created_at < totals.first_seen) totals.first_seen = s.created_at || totals.first_seen;
-      if (!totals.last_seen || s.last_event_at > totals.last_seen) totals.last_seen = s.last_event_at;
+      if (!s.created_at || !totals.first_seen || s.created_at < totals.first_seen)
+        totals.first_seen = s.created_at || totals.first_seen;
+      if (!totals.last_seen || s.last_event_at > totals.last_seen)
+        totals.last_seen = s.last_event_at;
       const corr = corrections.sessions[s.session_id] || {};
       const cls = effectiveClassification(s, corrections);
       if (!cls) {
@@ -297,16 +323,25 @@ function buildDoc(practitioner, perProject, corrections) {
         cap.max_evidence = t.max_evidence;
         cap.name = t.name;
       }
-      if (t.verified_max_evidence && (!cap.verified_max_evidence || EVIDENCE_WEIGHT[t.verified_max_evidence] > EVIDENCE_WEIGHT[cap.verified_max_evidence])) {
+      if (
+        t.verified_max_evidence &&
+        (!cap.verified_max_evidence ||
+          EVIDENCE_WEIGHT[t.verified_max_evidence] > EVIDENCE_WEIGHT[cap.verified_max_evidence])
+      ) {
         cap.verified_max_evidence = t.verified_max_evidence;
       }
       if (!cap.first_used || (t.first && t.first < cap.first_used)) cap.first_used = t.first;
       if (!cap.last_used || (t.last && t.last > cap.last_used)) cap.last_used = t.last;
       if (red.depth_max && red.depth_max in cap.depth_projects) cap.depth_projects[red.depth_max]++;
-      for (const cat of t.categories) cap.category_projects[cat] = (cap.category_projects[cat] || 0) + 1;
+      for (const cat of t.categories)
+        cap.category_projects[cat] = (cap.category_projects[cat] || 0) + 1;
       if (t.classifiers.has('heuristic')) cap.uncertainty.any_heuristic = true;
       if (t.classifiers.has('inherited')) cap.uncertainty.any_inherited = true;
-      if (t.min_confidence !== null && (cap.uncertainty.min_confidence === null || t.min_confidence < cap.uncertainty.min_confidence)) {
+      if (
+        t.min_confidence !== null &&
+        (cap.uncertainty.min_confidence === null ||
+          t.min_confidence < cap.uncertainty.min_confidence)
+      ) {
         cap.uncertainty.min_confidence = t.min_confidence;
       }
       // The explainability trace: one entry per contributing project.
@@ -366,10 +401,15 @@ function buildDoc(practitioner, perProject, corrections) {
       if (!cap.first_used || (b.first && b.first < cap.first_used)) cap.first_used = b.first;
       if (!cap.last_used || (b.last && b.last > cap.last_used)) cap.last_used = b.last;
       if (red.depth_max && red.depth_max in cap.depth_projects) cap.depth_projects[red.depth_max]++;
-      for (const cat of b.categories) cap.category_projects[cat] = (cap.category_projects[cat] || 0) + 1;
+      for (const cat of b.categories)
+        cap.category_projects[cat] = (cap.category_projects[cat] || 0) + 1;
       if (b.classifiers.has('heuristic')) cap.uncertainty.any_heuristic = true;
       if (b.classifiers.has('inherited')) cap.uncertainty.any_inherited = true;
-      if (b.min_confidence !== null && (cap.uncertainty.min_confidence === null || b.min_confidence < cap.uncertainty.min_confidence)) {
+      if (
+        b.min_confidence !== null &&
+        (cap.uncertainty.min_confidence === null ||
+          b.min_confidence < cap.uncertainty.min_confidence)
+      ) {
         cap.uncertainty.min_confidence = b.min_confidence;
       }
       cap.projects.push({
@@ -409,7 +449,8 @@ function buildDoc(practitioner, perProject, corrections) {
 function computeExperience(states, grouped, corrections, opts = {}) {
   const practitionerOf = opts.practitionerOf || (() => 'self');
   const practitionerMeta =
-    opts.practitionerMeta || ((key) => ({ id: String(key), display_name: String(key), provisional: false }));
+    opts.practitionerMeta ||
+    ((key) => ({ id: String(key), display_name: String(key), provisional: false }));
   const bySid = new Map(states.map((s) => [s.session_id, s]));
 
   const orgPerProject = new Map(); // projId -> {project, sessions}
@@ -431,7 +472,12 @@ function computeExperience(states, grouped, corrections, opts = {}) {
 
   const practitioners = [...scopes.entries()]
     .map(([key, perProject]) => buildDoc(practitionerMeta(key), perProject, corrections))
-    .sort((a, b) => (String(a.practitioner.display_name || a.practitioner.id) < String(b.practitioner.display_name || b.practitioner.id) ? -1 : 1));
+    .sort((a, b) =>
+      String(a.practitioner.display_name || a.practitioner.id) <
+      String(b.practitioner.display_name || b.practitioner.id)
+        ? -1
+        : 1
+    );
   const org = buildDoc({ id: 'org', display_name: 'Everyone' }, orgPerProject, corrections);
 
   return { v: 1, practitioners, org };

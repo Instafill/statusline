@@ -15,6 +15,9 @@ npm-debug.log*
 .statusline/
 *.tmp
 
+# Local-surface issue tracker (docs/agents/issue-tracker.md)
+.scratch/
+
 # OS
 Thumbs.db
 .DS_Store

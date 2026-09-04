@@ -47,7 +47,9 @@ function readAssistantExcerpts(transcriptPath, { maxExcerpts = 5, maxExcerptChar
       }
       if (!obj || obj.isSidechain === true) continue;
       const isAssistant =
-        obj.type === 'assistant' || obj.role === 'assistant' || (obj.message && obj.message.role === 'assistant');
+        obj.type === 'assistant' ||
+        obj.role === 'assistant' ||
+        (obj.message && obj.message.role === 'assistant');
       if (!isAssistant) continue;
       const text = extractText(obj.message || obj);
       if (!text || !text.trim()) continue;

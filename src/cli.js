@@ -18,12 +18,6 @@ const { ensureDirs, paths } = require('./paths');
 async function main() {
   const [cmd, arg, arg2] = process.argv.slice(2);
   ensureDirs();
-  // Whichever copy is being run is the one the logon launcher should resolve.
-  try {
-    require('./agent-root').recordAgentRoot();
-  } catch (e) {
-    /* a read-only or unwritable data dir must not break the command itself */
-  }
 
   switch (cmd) {
     case 'install': {
@@ -39,15 +33,34 @@ async function main() {
         break;
       }
       const res = installer.install();
-      console.log(`Installed ${res.added.length} hook entr${res.added.length === 1 ? 'y' : 'ies'} (${res.skipped.length} already present) in ${res.settingsPath}`);
+      // Recording here is what points `autostart`'s launcher at this checkout.
+      // `autostart` records it as well, and a plugin install records it from
+      // hook-forward, since Claude Code owns that directory and never runs this
+      // command. The hooks are already registered above, so a failed record is
+      // worth a line of output rather than an abort.
+      try {
+        require('./agent-root').recordAgentRoot();
+      } catch (e) {
+        console.log(`Warning: could not record the agent location (${e.message}).`);
+        console.log('Run "node src/cli.js autostart" or the watcher will not start at login.');
+      }
+      console.log(
+        `Installed ${res.added.length} hook entr${res.added.length === 1 ? 'y' : 'ies'} (${res.skipped.length} already present) in ${res.settingsPath}`
+      );
       if (res.repointed.length) {
-        console.log(`Repointed ${res.repointed.length} entr${res.repointed.length === 1 ? 'y' : 'ies'} from another checkout to this one`);
+        console.log(
+          `Repointed ${res.repointed.length} entr${res.repointed.length === 1 ? 'y' : 'ies'} from another checkout to this one`
+        );
       }
       if (res.pruned.length) {
-        console.log(`Removed ${res.pruned.length} entr${res.pruned.length === 1 ? 'y' : 'ies'} this version no longer registers: ${res.pruned.map((p) => p.event).join(', ')}`);
+        console.log(
+          `Removed ${res.pruned.length} entr${res.pruned.length === 1 ? 'y' : 'ies'} this version no longer registers: ${res.pruned.map((p) => p.event).join(', ')}`
+        );
       }
       if (res.backupFile) console.log(`Backup: ${res.backupFile}`);
-      console.log('New Claude Code sessions will now be observed. Run "node src/cli.js start" to launch the watcher.');
+      console.log(
+        'New Claude Code sessions will now be observed. Run "node src/cli.js start" to launch the watcher.'
+      );
       break;
     }
     case 'uninstall': {
@@ -66,7 +79,9 @@ async function main() {
       const st = installer.status();
       const viaPlugin = isPluginInstall();
       console.log(`Data dir:      ${paths.home}`);
-      console.log(`Settings file: ${st.settingsPath}${st.parseError ? ` (PARSE ERROR: ${st.parseError})` : ''}`);
+      console.log(
+        `Settings file: ${st.settingsPath}${st.parseError ? ` (PARSE ERROR: ${st.parseError})` : ''}`
+      );
       // A plugin install registers hooks from its own manifest and must NEVER
       // be told to run `install` — that would ADD settings.json entries on top
       // of the plugin's, double-capturing every event (doctor.js:67 same rule).
@@ -74,7 +89,10 @@ async function main() {
         console.log('Hooks:         from the plugin manifest (settings.json is not modified)');
       } else {
         console.log(`Hooks:         ${st.fullyInstalled ? 'installed' : 'NOT (fully) installed'}`);
-        for (const e of st.entries) console.log(`  - ${e.event}${e.matcher ? ` [${e.matcher}]` : ''}: ${e.installed ? 'ok' : 'missing'}`);
+        for (const e of st.entries)
+          console.log(
+            `  - ${e.event}${e.matcher ? ` [${e.matcher}]` : ''}: ${e.installed ? 'ok' : 'missing'}`
+          );
         if (st.drift) console.log(`Install drift: ${st.drift} — re-run "node src/cli.js install"`);
       }
       let spoolDepth = 0;
@@ -82,15 +100,20 @@ async function main() {
       try {
         spoolDepth = fs.readdirSync(paths.spoolNew).length;
         sessionCount = fs.readdirSync(paths.sessionsDir).filter((f) => f.endsWith('.json')).length;
-      } catch (e) { /* dirs may not exist yet */ }
+      } catch (e) {
+        /* dirs may not exist yet */
+      }
       console.log(`Spool pending: ${spoolDepth}; sessions on disk: ${sessionCount}`);
       const cfg = config.load();
       await new Promise((resolve) => {
-        const req = http.get({ host: '127.0.0.1', port: cfg.port, path: '/api/health', timeout: 1500 }, (res) => {
-          console.log(`Watcher:       running (http://127.0.0.1:${cfg.port})`);
-          res.resume();
-          resolve();
-        });
+        const req = http.get(
+          { host: '127.0.0.1', port: cfg.port, path: '/api/health', timeout: 1500 },
+          (res) => {
+            console.log(`Watcher:       running (http://127.0.0.1:${cfg.port})`);
+            res.resume();
+            resolve();
+          }
+        );
         req.on('error', () => {
           console.log(`Watcher:       not running (start with "node src/cli.js start")`);
           resolve();
@@ -116,7 +139,10 @@ async function main() {
       if (!s) exitUsage(`unknown session ${arg}`);
       const cfg = config.load();
       const excerpts = s.transcript_path
-        ? readAssistantExcerpts(s.transcript_path, { maxExcerpts: cfg.digest.max_excerpts, maxExcerptChars: cfg.digest.max_excerpt_chars })
+        ? readAssistantExcerpts(s.transcript_path, {
+            maxExcerpts: cfg.digest.max_excerpts,
+            maxExcerptChars: cfg.digest.max_excerpt_chars,
+          })
         : [];
       const text = buildDigest({ ...s, assistant_excerpts: excerpts }, cfg.digest);
       console.log(text);
@@ -163,33 +189,50 @@ async function main() {
         else if (arg) exitUsage(`unknown session ${arg}`);
       }
       const out = grouping.recompute();
-      console.log(`Re-folded ${folded} session(s) from event logs; regrouped into ${out.projects.length} projects.`);
+      console.log(
+        `Re-folded ${folded} session(s) from event logs; regrouped into ${out.projects.length} projects.`
+      );
       console.log('(The uploader re-ships anything whose content changed on its next reconcile.)');
       break;
     }
     case 'join': {
-      if (!arg || !arg2) exitUsage('join requires <url> and <enroll-code> — copy the command from your team dashboard');
+      if (!arg || !arg2)
+        exitUsage(
+          'join requires <url> and <enroll-code> — copy the command from your team dashboard'
+        );
       const { join } = require('./upload/join');
       const r = await join(arg, arg2);
-      console.log(`Enrolled machine ${r.machine_id} with ${r.org ? `"${r.org.name}"` : 'the team'} (${r.endpoint}).`);
+      console.log(
+        `Enrolled machine ${r.machine_id} with ${r.org ? `"${r.org.name}"` : 'the team'} (${r.endpoint}).`
+      );
       console.log(`Attributed to practitioner ${r.practitioner_id}. Uploads are now enabled.`);
       console.log('If the watcher is running, restart it to start uploading:');
-      console.log('  taskkill /PID <pid from ~/.statusline/watcher.lock> /F && node src/cli.js start');
+      console.log(
+        '  taskkill /PID <pid from ~/.statusline/watcher.lock> /F && node src/cli.js start'
+      );
       break;
     }
     case 'autostart': {
       const autostart = require('./autostart');
       if (arg === '--off') {
         const res = autostart.disable();
-        console.log(res.removed ? 'Autostart removed. The watcher will no longer start at login.' : 'Autostart was not registered; nothing to remove.');
+        console.log(
+          res.removed
+            ? 'Autostart removed. The watcher will no longer start at login.'
+            : 'Autostart was not registered; nothing to remove.'
+        );
       } else if (arg === '--status') {
         const st = autostart.status();
-        console.log(`Autostart: ${st.enabled ? 'enabled' : 'not enabled'} (${st.mechanism} "${st.id}")`);
+        console.log(
+          `Autostart: ${st.enabled ? 'enabled' : 'not enabled'} (${st.mechanism} "${st.id}")`
+        );
       } else {
         const res = autostart.enable();
         if (res.note) console.log(`Note: ${res.note}.`);
         console.log(`Autostart enabled via ${res.mechanism} "${res.id}".`);
-        console.log('The watcher will start automatically at login. Disable with "node src/cli.js autostart --off".');
+        console.log(
+          'The watcher will start automatically at login. Disable with "node src/cli.js autostart --off".'
+        );
       }
       break;
     }
@@ -203,7 +246,9 @@ async function main() {
       }
       const failed = results.filter((r) => r.status === doctor.FAIL).length;
       const warned = results.filter((r) => r.status === doctor.WARN).length;
-      console.log(`\n${results.length - failed - warned} passed, ${warned} warning(s), ${failed} failure(s).`);
+      console.log(
+        `\n${results.length - failed - warned} passed, ${warned} warning(s), ${failed} failure(s).`
+      );
       if (failed) process.exitCode = 1;
       break;
     }

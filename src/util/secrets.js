@@ -12,7 +12,10 @@ const REPLACERS = [
   [/\bAKIA[0-9A-Z]{16}\b/g, '***'],
   [/\beyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g, '***'], // JWT
   // key=value / key: value assignments: keep the key, mask the value.
-  [/((?:password|passwd|pwd|token|secret|api[_-]?key|access[_-]?key|client[_-]?secret|auth)\s*[=:]\s*)(["']?)[^\s"'&;|]{6,}\2/gi, '$1***'],
+  [
+    /((?:password|passwd|pwd|token|secret|api[_-]?key|access[_-]?key|client[_-]?secret|auth)\s*[=:]\s*)(["']?)[^\s"'&;|]{6,}\2/gi,
+    '$1***',
+  ],
   [/(Bearer\s+)[A-Za-z0-9._~+/=-]{10,}/gi, '$1***'],
   // Credentials embedded in URLs: https://user:pass@host
   [/(\/\/[^\s/:@]+:)[^\s@]+(@)/g, '$1***$2'],

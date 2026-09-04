@@ -15,7 +15,15 @@ const { groupSessions, EMPTY_CORRECTIONS, WINDOWS_PATH_OPTS } = require('../src/
 const { computeExperience } = require('../src/experience-core');
 
 let n = 0;
-function mkState({ cwd, gitRoot = null, machine = null, created = '2026-08-01T10:00:00.000Z', last = null, cls = null, sid = null }) {
+function mkState({
+  cwd,
+  gitRoot = null,
+  machine = null,
+  created = '2026-08-01T10:00:00.000Z',
+  last = null,
+  cls = null,
+  sid = null,
+}) {
   return {
     session_id: sid || `exp-${n++}`,
     machine_id: machine,
@@ -28,7 +36,19 @@ function mkState({ cwd, gitRoot = null, machine = null, created = '2026-08-01T10
   };
 }
 
-function cls(techs, { category = 'internal_work', professional = true, depth = 'substantive', confidence = 0.8, via = 'claude-cli', industry = [], hint = 'x', bcaps = [] } = {}) {
+function cls(
+  techs,
+  {
+    category = 'internal_work',
+    professional = true,
+    depth = 'substantive',
+    confidence = 0.8,
+    via = 'claude-cli',
+    industry = [],
+    hint = 'x',
+    bcaps = [],
+  } = {}
+) {
   return {
     professional_work: professional,
     work_category: category,
@@ -60,7 +80,13 @@ function cap(doc, canonical) {
 test('session volume never inflates: 50 discussed sessions in one project = 1 project at discussed', () => {
   const states = [];
   for (let i = 0; i < 50; i++) {
-    states.push(mkState({ cwd: 'C:\\work\\big', gitRoot: 'C:\\work\\big', cls: cls([['Kafka', 'discussed']]) }));
+    states.push(
+      mkState({
+        cwd: 'C:\\work\\big',
+        gitRoot: 'C:\\work\\big',
+        cls: cls([['Kafka', 'discussed']]),
+      })
+    );
   }
   const { practitioners } = experience(states);
   const kafka = cap(practitioners[0], 'kafka');
@@ -87,9 +113,21 @@ test('verified separation: unverified hands_on projects never count as verified'
 });
 
 test('learning and personal never accrue capability experience; label corrections win both ways', () => {
-  const learning = mkState({ cwd: 'C:\\w\\learn', gitRoot: 'C:\\w\\learn', cls: cls([['Rust', 'hands_on', true]], { category: 'learning' }) });
-  const personal = mkState({ cwd: 'C:\\w\\pers', gitRoot: 'C:\\w\\pers', cls: cls([['Python', 'hands_on', true]], { category: 'personal' }) });
-  const work = mkState({ cwd: 'C:\\w\\real', gitRoot: 'C:\\w\\real', cls: cls([['Go', 'hands_on', true]], { category: 'client_work' }) });
+  const learning = mkState({
+    cwd: 'C:\\w\\learn',
+    gitRoot: 'C:\\w\\learn',
+    cls: cls([['Rust', 'hands_on', true]], { category: 'learning' }),
+  });
+  const personal = mkState({
+    cwd: 'C:\\w\\pers',
+    gitRoot: 'C:\\w\\pers',
+    cls: cls([['Python', 'hands_on', true]], { category: 'personal' }),
+  });
+  const work = mkState({
+    cwd: 'C:\\w\\real',
+    gitRoot: 'C:\\w\\real',
+    cls: cls([['Go', 'hands_on', true]], { category: 'client_work' }),
+  });
   const { practitioners } = experience([learning, personal, work]);
   const doc = practitioners[0];
   assert.strictEqual(cap(doc, 'rust'), undefined, 'learning excluded');
@@ -112,7 +150,10 @@ test('learning and personal never accrue capability experience; label correction
   assert.strictEqual(cap(flipped, 'go'), undefined, 'label demoted client work to personal');
 
   // `ignore` removes the session entirely (grouping filters it).
-  const ignored = experience([work], { ...EMPTY_CORRECTIONS, sessions: { [work.session_id]: { label: 'ignore' } } });
+  const ignored = experience([work], {
+    ...EMPTY_CORRECTIONS,
+    sessions: { [work.session_id]: { label: 'ignore' } },
+  });
   assert.strictEqual(ignored.practitioners.length, 0);
 
   // field_overrides are respected via effectiveClassification.
@@ -124,8 +165,18 @@ test('learning and personal never accrue capability experience; label correction
 });
 
 test('org rollup: two practitioners on one shared project = 1 project each AND 1 org project', () => {
-  const a = mkState({ cwd: 'C:\\team\\shared', gitRoot: 'C:\\team\\shared', machine: 'm1', cls: cls([['MongoDB', 'hands_on', true]]) });
-  const b = mkState({ cwd: 'C:\\team\\shared', gitRoot: 'C:\\team\\shared', machine: 'm2', cls: cls([['MongoDB', 'hands_on', true]]) });
+  const a = mkState({
+    cwd: 'C:\\team\\shared',
+    gitRoot: 'C:\\team\\shared',
+    machine: 'm1',
+    cls: cls([['MongoDB', 'hands_on', true]]),
+  });
+  const b = mkState({
+    cwd: 'C:\\team\\shared',
+    gitRoot: 'C:\\team\\shared',
+    machine: 'm2',
+    cls: cls([['MongoDB', 'hands_on', true]]),
+  });
   const { practitioners, org } = experience([a, b], EMPTY_CORRECTIONS, {
     practitionerOf: (s) => s.machine_id,
   });
@@ -134,7 +185,11 @@ test('org rollup: two practitioners on one shared project = 1 project each AND 1
     assert.strictEqual(cap(doc, 'mongodb').distinct_projects, 1);
     assert.strictEqual(doc.totals.projects, 1);
   }
-  assert.strictEqual(cap(org, 'mongodb').distinct_projects, 1, 'org never sums per-practitioner counts');
+  assert.strictEqual(
+    cap(org, 'mongodb').distinct_projects,
+    1,
+    'org never sums per-practitioner counts'
+  );
   assert.strictEqual(org.totals.projects, 1);
   assert.strictEqual(org.totals.sessions, 2);
 });
@@ -142,9 +197,18 @@ test('org rollup: two practitioners on one shared project = 1 project each AND 1
 test('all singleton catch-all work combined yields at most ONE flagged misc credit per capability', () => {
   const states = [];
   for (let i = 0; i < 5; i++) {
-    states.push(mkState({ cwd: 'C:\\Users\\sampleuser', cls: cls([['PowerShell', 'hands_on', true]], { hint: `chore ${i}` }) }));
+    states.push(
+      mkState({
+        cwd: 'C:\\Users\\sampleuser',
+        cls: cls([['PowerShell', 'hands_on', true]], { hint: `chore ${i}` }),
+      })
+    );
   }
-  const real = mkState({ cwd: 'C:\\w\\infra', gitRoot: 'C:\\w\\infra', cls: cls([['PowerShell', 'hands_on', true]]) });
+  const real = mkState({
+    cwd: 'C:\\w\\infra',
+    gitRoot: 'C:\\w\\infra',
+    cls: cls([['PowerShell', 'hands_on', true]]),
+  });
   const { practitioners } = experience([...states, real]);
   const doc = practitioners[0];
   const ps = cap(doc, 'powershell');
@@ -158,12 +222,31 @@ test('all singleton catch-all work combined yields at most ONE flagged misc cred
 });
 
 test('uncertainty propagates raw: provenance flags, min confidence, membership kind, provisional identity', () => {
-  const solid = mkState({ cwd: 'C:\\w\\solid', gitRoot: 'C:\\w\\solid', machine: 'm1', cls: cls([['Node.js', 'hands_on', true]], { confidence: 0.9 }) });
-  const shaky = mkState({ cwd: 'C:\\w\\shaky', gitRoot: 'C:\\w\\shaky', machine: 'm1', cls: cls([['Node.js', 'discussed']], { confidence: 0.3, via: 'heuristic' }) });
-  const inherited = mkState({ cwd: 'C:\\w\\inh', gitRoot: 'C:\\w\\inh', machine: 'm1', cls: cls([['Node.js', 'discussed']], { confidence: 0.5, via: 'inherited' }) });
+  const solid = mkState({
+    cwd: 'C:\\w\\solid',
+    gitRoot: 'C:\\w\\solid',
+    machine: 'm1',
+    cls: cls([['Node.js', 'hands_on', true]], { confidence: 0.9 }),
+  });
+  const shaky = mkState({
+    cwd: 'C:\\w\\shaky',
+    gitRoot: 'C:\\w\\shaky',
+    machine: 'm1',
+    cls: cls([['Node.js', 'discussed']], { confidence: 0.3, via: 'heuristic' }),
+  });
+  const inherited = mkState({
+    cwd: 'C:\\w\\inh',
+    gitRoot: 'C:\\w\\inh',
+    machine: 'm1',
+    cls: cls([['Node.js', 'discussed']], { confidence: 0.5, via: 'inherited' }),
+  });
   const { practitioners } = experience([solid, shaky, inherited], EMPTY_CORRECTIONS, {
     practitionerOf: (s) => s.machine_id,
-    practitionerMeta: (key) => ({ id: 'machine:' + key, display_name: 'sampleuser', provisional: true }),
+    practitionerMeta: (key) => ({
+      id: 'machine:' + key,
+      display_name: 'sampleuser',
+      provisional: true,
+    }),
   });
   const doc = practitioners[0];
   assert.strictEqual(doc.practitioner.provisional, true);
@@ -179,15 +262,30 @@ test('uncertainty propagates raw: provenance flags, min confidence, membership k
 
 test('every capability count is backed by trace entries whose session ids resolve', () => {
   const states = [
-    mkState({ cwd: 'C:\\w\\a', gitRoot: 'C:\\w\\a', cls: cls([['TypeScript', 'hands_on', true], ['Redis', 'discussed']]) }),
+    mkState({
+      cwd: 'C:\\w\\a',
+      gitRoot: 'C:\\w\\a',
+      cls: cls([
+        ['TypeScript', 'hands_on', true],
+        ['Redis', 'discussed'],
+      ]),
+    }),
     mkState({ cwd: 'C:\\w\\a', gitRoot: 'C:\\w\\a', cls: cls([['TypeScript', 'discussed']]) }),
-    mkState({ cwd: 'C:\\w\\b', gitRoot: 'C:\\w\\b', cls: cls([['TypeScript', 'hands_on', false]]) }),
+    mkState({
+      cwd: 'C:\\w\\b',
+      gitRoot: 'C:\\w\\b',
+      cls: cls([['TypeScript', 'hands_on', false]]),
+    }),
   ];
   const byId = new Set(states.map((s) => s.session_id));
   const { practitioners, org } = experience(states);
   for (const doc of [practitioners[0], org]) {
     for (const c of doc.capabilities) {
-      assert.strictEqual(c.distinct_projects, c.projects.length, `${c.canonical}: count backed by trace`);
+      assert.strictEqual(
+        c.distinct_projects,
+        c.projects.length,
+        `${c.canonical}: count backed by trace`
+      );
       assert.strictEqual(c.verified_projects, c.projects.filter((p) => p.verified).length);
       for (const entry of c.projects) {
         assert.ok(entry.session_ids.length > 0);

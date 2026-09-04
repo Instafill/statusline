@@ -7,7 +7,12 @@ const path = require('path');
 const log = require('../util/log');
 
 const PUBLIC_DIR = path.resolve(__dirname, '..', '..', 'public');
-const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json' };
+const MIME = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json',
+};
 
 function matchRoute(routes, method, pathname) {
   for (const [spec, handler] of Object.entries(routes)) {
@@ -19,7 +24,8 @@ function matchRoute(routes, method, pathname) {
     const params = {};
     let ok = true;
     for (let i = 0; i < patternParts.length; i++) {
-      if (patternParts[i].startsWith(':')) params[patternParts[i].slice(1)] = decodeURIComponent(pathParts[i]);
+      if (patternParts[i].startsWith(':'))
+        params[patternParts[i].slice(1)] = decodeURIComponent(pathParts[i]);
       else if (patternParts[i] !== pathParts[i]) {
         ok = false;
         break;
@@ -33,7 +39,14 @@ function matchRoute(routes, method, pathname) {
 // The single-page app owns these paths: a reload or a pasted link must serve
 // the shell, which then routes client-side. Explicit list, not a catch-all, so
 // a missing asset still 404s as itself.
-const APP_PATHS = new Set(['/sessions', '/session', '/projects', '/experience', '/egress', '/settings']);
+const APP_PATHS = new Set([
+  '/sessions',
+  '/session',
+  '/projects',
+  '/experience',
+  '/egress',
+  '/settings',
+]);
 
 const isAppPath = (pathname) => APP_PATHS.has(pathname.split('/').slice(0, 2).join('/'));
 
@@ -55,7 +68,12 @@ function serveStatic(res, pathname) {
 }
 
 function createServer(cfg, routes) {
-  const allowedHosts = new Set([`127.0.0.1:${cfg.port}`, `localhost:${cfg.port}`, '127.0.0.1', 'localhost']);
+  const allowedHosts = new Set([
+    `127.0.0.1:${cfg.port}`,
+    `localhost:${cfg.port}`,
+    '127.0.0.1',
+    'localhost',
+  ]);
 
   const server = http.createServer((req, res) => {
     const host = String(req.headers.host || '');
@@ -76,13 +94,17 @@ function createServer(cfg, routes) {
 
     const csrf = req.headers['x-statusline'] === '1';
     if (req.method === 'POST' && !csrf) {
-      res.writeHead(403, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: 'missing X-Statusline header' }));
+      res
+        .writeHead(403, { 'Content-Type': 'application/json' })
+        .end(JSON.stringify({ error: 'missing X-Statusline header' }));
       return;
     }
 
     const match = matchRoute(routes, req.method, url.pathname);
     if (!match) {
-      res.writeHead(404, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: 'no such route' }));
+      res
+        .writeHead(404, { 'Content-Type': 'application/json' })
+        .end(JSON.stringify({ error: 'no such route' }));
       return;
     }
 
@@ -97,7 +119,9 @@ function createServer(cfg, routes) {
         try {
           body = JSON.parse(bodyRaw);
         } catch (e) {
-          res.writeHead(400, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: 'invalid JSON body' }));
+          res
+            .writeHead(400, { 'Content-Type': 'application/json' })
+            .end(JSON.stringify({ error: 'invalid JSON body' }));
           return;
         }
       }

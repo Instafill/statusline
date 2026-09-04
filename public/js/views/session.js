@@ -17,7 +17,19 @@ import {
 
 const LABELS = ['client_work', 'internal_work', 'learning', 'personal', 'ignore'];
 const CATEGORIES = ['client_work', 'internal_work', 'learning', 'personal', 'unknown'];
-const STAGES = ['research', 'planning', 'implementation', 'debugging', 'review', 'analysis', 'writing', 'configuration', 'operations', 'other', 'unknown'];
+const STAGES = [
+  'research',
+  'planning',
+  'implementation',
+  'debugging',
+  'review',
+  'analysis',
+  'writing',
+  'configuration',
+  'operations',
+  'other',
+  'unknown',
+];
 const DEPTHS = ['substantive', 'shallow', 'trivial'];
 const PROMPT_CAP = 10; // prompts shown before the "show N more" expander
 const EVENTS_CAP = 60000; // chars of raw event JSON rendered
@@ -39,7 +51,9 @@ function titleFor(s, cls, sid) {
 
 function failureBanner(s) {
   const auth = /auth_error/.test(s.classifier_error || '');
-  const hint = auth ? '<br><b>Hint:</b> run <code>claude</code> in a terminal and log in, then retry.' : '';
+  const hint = auth
+    ? '<br><b>Hint:</b> run <code>claude</code> in a terminal and log in, then retry.'
+    : '';
   return banner(`Classification failed: ${esc(s.classifier_error)}${hint}`, 'error');
 }
 
@@ -56,12 +70,19 @@ function provenanceBanners(s, cls) {
   }
   if (meta.classifier === 'heuristic') {
     out.push(
-      banner(`Heuristic fallback — the classifier was unreachable (${esc(meta.fallback_reason || 'error')}).
-        Low confidence; will be upgraded automatically when the classifier is reachable.`, 'error')
+      banner(
+        `Heuristic fallback — the classifier was unreachable (${esc(meta.fallback_reason || 'error')}).
+        Low confidence; will be upgraded automatically when the classifier is reachable.`,
+        'error'
+      )
     );
   }
   if (s.classification_state === 'stale') {
-    out.push(banner('New activity since this classification — it will re-classify automatically when the session goes idle.'));
+    out.push(
+      banner(
+        'New activity since this classification — it will re-classify automatically when the session goes idle.'
+      )
+    );
   }
   return out.join('');
 }
@@ -84,11 +105,15 @@ function classifiedHtml(s, cls, corr) {
     ])}
     <div class="section">${subhead('Business capabilities — catalog picks')}${
       (cls.business_capabilities || [])
-        .map((c) => `<span class="chip bcap" title="${esc(c.domain || '')}">${esc(c.name || c.id)}</span>`)
+        .map(
+          (c) =>
+            `<span class="chip bcap" title="${esc(c.domain || '')}">${esc(c.name || c.id)}</span>`
+        )
         .join('') || '<span class="dim">—</span>'
     }</div>
     <div class="section">${subhead('Tasks')}${
-      (cls.tasks || []).map((t) => `<span class="chip task">${esc(t)}</span>`).join('') || '<span class="dim">—</span>'
+      (cls.tasks || []).map((t) => `<span class="chip task">${esc(t)}</span>`).join('') ||
+      '<span class="dim">—</span>'
     }</div>
     <div class="section">${subhead('Technologies — hover a chip for the evidence basis')}${
       techChips(cls.technologies) || '<span class="dim">—</span>'
@@ -104,7 +129,8 @@ function classifiedHtml(s, cls, corr) {
 // Unclassified sessions get a real answer to "when will this classify?".
 function waitingHtml(s) {
   if (s.counts.turns < 1) {
-    const why = s.counts.prompts === 0 ? ' (no prompts captured; resume/branch shells never classify)' : '';
+    const why =
+      s.counts.prompts === 0 ? ' (no prompts captured; resume/branch shells never classify)' : '';
     return `<div class="dim">Not classified — waiting for the first completed turn${why}.</div>`;
   }
   const threshold = s.idle_minutes || 10;
@@ -125,7 +151,8 @@ function classificationHtml(s, cls, corr) {
   const failure = s.classification_state === 'classification_failed' ? failureBanner(s) : '';
   if (cls) return failure + classifiedHtml(s, cls, corr);
   if (failure) return failure;
-  if (s.classification_state === 'pending') return '<div class="dim">Classification in progress…</div>';
+  if (s.classification_state === 'pending')
+    return '<div class="dim">Classification in progress…</div>';
   return waitingHtml(s);
 }
 
@@ -139,7 +166,10 @@ const promptItem = (p, cls = '') =>
 function promptsHtml(s) {
   const all = s.prompts || [];
   if (!all.length) return '<div class="dim">none captured</div>';
-  const shown = all.slice(0, PROMPT_CAP).map((p) => promptItem(p)).join('');
+  const shown = all
+    .slice(0, PROMPT_CAP)
+    .map((p) => promptItem(p))
+    .join('');
   if (all.length <= PROMPT_CAP) return shown;
   return `${shown}<details><summary class="dim small">show ${all.length - PROMPT_CAP} more prompts</summary>${all
     .slice(PROMPT_CAP)
@@ -150,7 +180,10 @@ function promptsHtml(s) {
 function toolActivityHtml(s) {
   if (s.counts.tool_uses === 0) return '<div class="dim">No tool usage — conversation only.</div>';
   const t = s.tools || {};
-  const histogram = (obj) => Object.entries(obj || {}).map(([k, n]) => `${k}×${n}`).join(', ');
+  const histogram = (obj) =>
+    Object.entries(obj || {})
+      .map(([k, n]) => `${k}×${n}`)
+      .join(', ');
   const list = (label, items) =>
     (items || []).length
       ? `<details><summary>${items.length} ${label}</summary><pre>${esc(items.join('\n'))}</pre></details>`
@@ -167,7 +200,8 @@ function toolActivityHtml(s) {
 }
 
 function digestHtml(s) {
-  if (!s.digest) return '<div class="dim">No digest built yet (nothing has been sent for this session).</div>';
+  if (!s.digest)
+    return '<div class="dim">No digest built yet (nothing has been sent for this session).</div>';
   return `<div class="small dim">built ${when(s.digest.built_at)} · ${s.digest.chars} chars ·
       sha256 <code>${esc((s.digest.sha256 || '').slice(0, 16))}…</code></div>
     <details><summary>show exactly what ${s.classification ? 'was' : 'will be'} sent</summary>
@@ -184,13 +218,16 @@ export async function renderSession(el, sid) {
   const projOptions = ['<option value="">(auto-grouped)</option>']
     .concat(
       projects.projects.map(
-        (p) => `<option value="${esc(p.id)}" ${corr.project_id === p.id ? 'selected' : ''}>${esc(p.name)}</option>`
+        (p) =>
+          `<option value="${esc(p.id)}" ${corr.project_id === p.id ? 'selected' : ''}>${esc(p.name)}</option>`
       )
     )
     .join('');
 
   const excerpts = (s.assistant_excerpts || []).map((e) => promptItem(e, 'assistant')).join('');
-  const subagents = s.counts.subagent_events ? ` · ${s.counts.subagent_events} subagent events` : '';
+  const subagents = s.counts.subagent_events
+    ? ` · ${s.counts.subagent_events} subagent events`
+    : '';
 
   el.innerHTML = `
     <p><a href="/sessions">← all sessions</a></p>
@@ -204,7 +241,10 @@ export async function renderSession(el, sid) {
         s.git_worktree && ['Worktree', esc(s.git_worktree)],
         ['Started / last', `${when(s.created_at)} / ${when(s.last_event_at)}`],
         ['Status', livenessText(s)],
-        ['Volume', `${s.counts.prompts} prompts · ${s.counts.turns} turns · ${s.counts.tool_uses} tool calls${subagents}`],
+        [
+          'Volume',
+          `${s.counts.prompts} prompts · ${s.counts.turns} turns · ${s.counts.tool_uses} tool calls${subagents}`,
+        ],
       ])}
       <div class="controls-row section">
         ${subhead('Label:')}
@@ -225,10 +265,12 @@ export async function renderSession(el, sid) {
     <div class="card"><h2>Classification <span class="hint">why: hover technology chips; rationale below</span></h2>
       ${classificationHtml(s, cls, corr)}</div>
     <div class="card"><h2>Prompts</h2>${promptsHtml(s)}</div>
-    ${excerpts
-      ? `<div class="card"><h2>Assistant <span class="hint">best-effort excerpts from the local transcript,
+    ${
+      excerpts
+        ? `<div class="card"><h2>Assistant <span class="hint">best-effort excerpts from the local transcript,
           captured at classification time</span></h2>${excerpts}</div>`
-      : ''}
+        : ''
+    }
     <div class="card"><h2>Tool activity</h2>${toolActivityHtml(s)}</div>
     <div class="card"><h2>Digest sent</h2>${digestHtml(s)}</div>
     <details class="card"><summary>Raw events (${(s.events || []).length})</summary>
@@ -260,7 +302,8 @@ export async function renderSession(el, sid) {
 function renderOverridesEditor(sid, cls, corr) {
   pauseRefresh(true);
   const ov = corr.field_overrides || {};
-  const value = (field, fallback) => (ov[field] !== undefined ? ov[field] : cls ? cls[field] : fallback);
+  const value = (field, fallback) =>
+    ov[field] !== undefined ? ov[field] : cls ? cls[field] : fallback;
   const asText = (x) => (Array.isArray(x) ? x.join(', ') : x || '');
   const text = (field, label) =>
     `<div class="field"><label>${label}</label><input type="text" class="form-control form-control-sm" name="${field}" value="${esc(asText(value(field, '')))}"></div>`;

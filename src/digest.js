@@ -55,9 +55,15 @@ function render(state, caps) {
 
   lines.push('SESSION METADATA');
   lines.push(`- session: ${String(state.session_id).slice(0, 8)}`);
-  lines.push(`- started: ${state.created_at || 'unknown'}; last activity: ${state.last_event_at || 'unknown'}; duration: ${durationOf(state)}`);
-  lines.push(`- working directory: ${state.primary_cwd || 'unknown'}${state.git_root ? ` (git repo: ${state.git_root}${state.git_worktree ? `, worktree: ${state.git_worktree}` : ''})` : ''}`);
-  lines.push(`- session source: ${(state.sources || []).join(', ') || 'unknown'}; end reason: ${state.end_reason || 'still open'}`);
+  lines.push(
+    `- started: ${state.created_at || 'unknown'}; last activity: ${state.last_event_at || 'unknown'}; duration: ${durationOf(state)}`
+  );
+  lines.push(
+    `- working directory: ${state.primary_cwd || 'unknown'}${state.git_root ? ` (git repo: ${state.git_root}${state.git_worktree ? `, worktree: ${state.git_worktree}` : ''})` : ''}`
+  );
+  lines.push(
+    `- session source: ${(state.sources || []).join(', ') || 'unknown'}; end reason: ${state.end_reason || 'still open'}`
+  );
   lines.push(
     `- turns: ${state.counts.turns}; prompts: ${state.counts.prompts}; tool calls: ${state.counts.tool_uses}; subagent activity: ${state.counts.subagent_events > 0 ? 'yes' : 'no'}`
   );
@@ -71,7 +77,10 @@ function render(state, caps) {
   lines.push('ASSISTANT EXCERPTS (best-effort, from local transcript)');
   const excerpts = (state.assistant_excerpts || []).slice(-caps.maxExcerpts);
   if (excerpts.length === 0) lines.push('(transcript unavailable)');
-  else excerpts.forEach((e, i) => lines.push(`[${i + 1}] ${maskSecrets(e.text.slice(0, caps.maxExcerptChars))}`));
+  else
+    excerpts.forEach((e, i) =>
+      lines.push(`[${i + 1}] ${maskSecrets(e.text.slice(0, caps.maxExcerptChars))}`)
+    );
 
   lines.push('');
   lines.push('TOOL ACTIVITY');
@@ -81,19 +90,29 @@ function render(state, caps) {
     lines.push(`- tool usage counts: ${fmtCounter(tools.by_name || {})}`);
     const bash = (tools.bash_commands || []).slice(0, caps.maxBashCommands);
     if (bash.length) {
-      lines.push(`- shell commands (deduped${tools.bash_commands.length > bash.length ? `, first ${bash.length} of ${tools.bash_commands.length}` : ''}):`);
+      lines.push(
+        `- shell commands (deduped${tools.bash_commands.length > bash.length ? `, first ${bash.length} of ${tools.bash_commands.length}` : ''}):`
+      );
       for (const c of bash) lines.push(`    $ ${c.slice(0, 300)}`);
     }
-    if (Object.keys(tools.extensions || {}).length) lines.push(`- files edited by extension: ${fmtCounter(tools.extensions)}`);
-    if (Object.keys(tools.extensions_read || {}).length) lines.push(`- files read by extension: ${fmtCounter(tools.extensions_read)}`);
+    if (Object.keys(tools.extensions || {}).length)
+      lines.push(`- files edited by extension: ${fmtCounter(tools.extensions)}`);
+    if (Object.keys(tools.extensions_read || {}).length)
+      lines.push(`- files read by extension: ${fmtCounter(tools.extensions_read)}`);
     const files = (tools.files_touched || []).slice(0, caps.maxFiles);
     if (files.length) {
-      lines.push(`- files (${tools.files_touched.length > files.length ? `first ${files.length} of ${tools.files_touched.length}` : files.length}): ${files.join(', ')}`);
+      lines.push(
+        `- files (${tools.files_touched.length > files.length ? `first ${files.length} of ${tools.files_touched.length}` : files.length}): ${files.join(', ')}`
+      );
     }
-    if ((tools.mcp_servers || []).length) lines.push(`- MCP servers used: ${tools.mcp_servers.join(', ')}`);
-    if ((tools.web?.fetch_domains || []).length) lines.push(`- web fetches: ${tools.web.fetch_domains.join(', ')}`);
-    if ((tools.web?.search_queries || []).length) lines.push(`- web searches: ${tools.web.search_queries.map((q) => `"${q}"`).join('; ')}`);
-    if ((tools.dependencies_observed || []).length) lines.push(`- dependencies installed/added: ${tools.dependencies_observed.join(', ')}`);
+    if ((tools.mcp_servers || []).length)
+      lines.push(`- MCP servers used: ${tools.mcp_servers.join(', ')}`);
+    if ((tools.web?.fetch_domains || []).length)
+      lines.push(`- web fetches: ${tools.web.fetch_domains.join(', ')}`);
+    if ((tools.web?.search_queries || []).length)
+      lines.push(`- web searches: ${tools.web.search_queries.map((q) => `"${q}"`).join('; ')}`);
+    if ((tools.dependencies_observed || []).length)
+      lines.push(`- dependencies installed/added: ${tools.dependencies_observed.join(', ')}`);
   }
 
   return lines.join('\n');
@@ -115,8 +134,23 @@ function shrinkLevels(d) {
     { ...base, maxBashCommands: 10 },
     { ...base, maxBashCommands: 10, maxFiles: 15 },
     { ...base, maxBashCommands: 10, maxFiles: 15, maxExcerpts: 2, maxExcerptChars: 400 },
-    { ...base, maxBashCommands: 10, maxFiles: 15, maxExcerpts: 2, maxExcerptChars: 400, maxPrompts: 8, maxPromptChars: 400 },
-    { maxPrompts: 2, maxPromptChars: 300, maxBashCommands: 5, maxFiles: 5, maxExcerpts: 1, maxExcerptChars: 200 },
+    {
+      ...base,
+      maxBashCommands: 10,
+      maxFiles: 15,
+      maxExcerpts: 2,
+      maxExcerptChars: 400,
+      maxPrompts: 8,
+      maxPromptChars: 400,
+    },
+    {
+      maxPrompts: 2,
+      maxPromptChars: 300,
+      maxBashCommands: 5,
+      maxFiles: 5,
+      maxExcerpts: 1,
+      maxExcerptChars: 200,
+    },
   ];
 }
 

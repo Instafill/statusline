@@ -47,7 +47,11 @@ export function worktreeBadge(s) {
 }
 
 // kind: '' warning (the default), 'error', or 'tip' (an offer, not a problem).
-const BANNER_CLASS = { '': 'alert-warning', error: 'alert-danger', tip: 'alert-primary d-flex gap-3 align-items-start' };
+const BANNER_CLASS = {
+  '': 'alert-warning',
+  error: 'alert-danger',
+  tip: 'alert-primary d-flex gap-3 align-items-start',
+};
 
 export function banner(html, kind = '') {
   return `<div class="alert ${BANNER_CLASS[kind] || 'alert-warning'}">${html}</div>`;
@@ -76,7 +80,9 @@ export function subhead(text) {
 export function costNote(meta) {
   if (meta?.cost_usd == null) return '';
   const k = (n) => (n >= 1000 ? `${Math.round(n / 100) / 10}k` : String(n));
-  const tokens = meta.input_tokens ? ` · ${k(meta.input_tokens)} in / ${k(meta.output_tokens || 0)} out` : '';
+  const tokens = meta.input_tokens
+    ? ` · ${k(meta.input_tokens)} in / ${k(meta.output_tokens || 0)} out`
+    : '';
   return ` · $${Number(meta.cost_usd).toFixed(4)}${tokens}`;
 }
 
@@ -84,7 +90,9 @@ export function techChips(techs) {
   return (techs || [])
     .map((t) => {
       const unverified = t.evidence === 'hands_on' && t.verified === false;
-      const title = (t.basis || []).join(', ') + (unverified ? ' — claimed by classifier, no tool evidence' : '');
+      const title =
+        (t.basis || []).join(', ') +
+        (unverified ? ' — claimed by classifier, no tool evidence' : '');
       return `<span class="chip ${esc(t.evidence)}${unverified ? ' unverified' : ''}" title="${esc(title)}">${esc(
         t.name
       )} · ${esc(t.evidence)}${unverified ? '?' : ''}</span>`;
@@ -115,7 +123,8 @@ const PROJECT_COLORS = [
 ];
 
 function projectColor(s) {
-  const key = (s.project && s.project.id) || String(s.git_root || s.primary_cwd || '').toLowerCase();
+  const key =
+    (s.project && s.project.id) || String(s.git_root || s.primary_cwd || '').toLowerCase();
   if (!key) return null;
   let h = 0;
   for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
@@ -145,9 +154,13 @@ function traceLine(p) {
   const flags = [
     p.verified ? 'tool-verified' : p.max_evidence === 'hands_on' ? 'unverified claim' : null,
     p.depth_max,
-    p.classifiers && p.classifiers.some((c) => c !== 'claude-cli') ? `via ${p.classifiers.join('/')}` : null,
+    p.classifiers && p.classifiers.some((c) => c !== 'claude-cli')
+      ? `via ${p.classifiers.join('/')}`
+      : null,
     p.min_confidence != null ? `conf ≥${p.min_confidence}` : null,
-  ].filter(Boolean).join(' · ');
+  ]
+    .filter(Boolean)
+    .join(' · ');
   return `<div class="small">· <b>${esc(name)}</b> — ${esc(p.max_evidence)}, ${p.sessions} session(s)
     <span class="dim">(${when(p.first_seen)} → ${when(p.last_seen)}${flags ? ' · ' + esc(flags) : ''})</span></div>`;
 }
@@ -155,11 +168,16 @@ function traceLine(p) {
 function capabilityRow(c) {
   if (c.max_evidence === 'mentioned') return '';
   const unverified = c.max_evidence === 'hands_on' && !(c.verified_projects > 0);
-  const depths = Object.entries(c.depth_projects || {}).filter(([, n]) => n > 0).map(([d, n]) => `${d}×${n}`).join(', ');
+  const depths = Object.entries(c.depth_projects || {})
+    .filter(([, n]) => n > 0)
+    .map(([d, n]) => `${d}×${n}`)
+    .join(', ');
   const uncertain = [
     c.uncertainty?.any_heuristic ? 'heuristic-classified' : null,
     c.uncertainty?.any_inherited ? 'inherited' : null,
-  ].filter(Boolean).join(', ');
+  ]
+    .filter(Boolean)
+    .join(', ');
   return `<div class="exp-cap">
     <span class="chip ${esc(c.max_evidence)}${unverified ? ' unverified' : ''}"
       title="${esc(unverified ? 'hands_on claimed by classifier, no tool evidence in any project' : '')}">${esc(c.name || c.canonical)}${unverified ? '?' : ''}</span>
@@ -176,9 +194,13 @@ function bcapTraceLine(p) {
   const flags = [
     p.grounded_sessions > 0 ? 'grounded' : 'no tool corroboration',
     p.depth_max,
-    p.classifiers && p.classifiers.some((c) => c !== 'claude-cli') ? `via ${p.classifiers.join('/')}` : null,
+    p.classifiers && p.classifiers.some((c) => c !== 'claude-cli')
+      ? `via ${p.classifiers.join('/')}`
+      : null,
     p.min_confidence != null ? `conf ≥${p.min_confidence}` : null,
-  ].filter(Boolean).join(' · ');
+  ]
+    .filter(Boolean)
+    .join(' · ');
   return `<div class="small">· <b>${esc(name)}</b> — ${p.sessions} session(s), ${p.grounded_sessions || 0} grounded
     <span class="dim">(${when(p.first_seen)} → ${when(p.last_seen)}${flags ? ' · ' + esc(flags) : ''})</span></div>`;
 }
@@ -186,21 +208,38 @@ function bcapTraceLine(p) {
 function bcapTier(c) {
   const sessions = (c.projects || []).reduce((n, p) => n + p.sessions, 0);
   if (sessions === 1) {
-    return { cls: 'prov', label: 'provisional · 1 session', hint: 'a single session backs this — a signal, not yet a claim' };
+    return {
+      cls: 'prov',
+      label: 'provisional · 1 session',
+      hint: 'a single session backs this — a signal, not yet a claim',
+    };
   }
   if (c.grounded_projects > 0) {
-    return { cls: 'grounded', label: 'grounded', hint: 'the session activity behind this claim is tool-verified; the business-level reading is the classifier judgment' };
+    return {
+      cls: 'grounded',
+      label: 'grounded',
+      hint: 'the session activity behind this claim is tool-verified; the business-level reading is the classifier judgment',
+    };
   }
-  return { cls: 'claimed', label: 'claimed', hint: 'classifier judgment with no tool-verified activity behind it' };
+  return {
+    cls: 'claimed',
+    label: 'claimed',
+    hint: 'classifier judgment with no tool-verified activity behind it',
+  };
 }
 
 function bcapRow(c) {
   const tier = bcapTier(c);
-  const depths = Object.entries(c.depth_projects || {}).filter(([, n]) => n > 0).map(([d, n]) => `${d}×${n}`).join(', ');
+  const depths = Object.entries(c.depth_projects || {})
+    .filter(([, n]) => n > 0)
+    .map(([d, n]) => `${d}×${n}`)
+    .join(', ');
   const uncertain = [
     c.uncertainty?.any_heuristic ? 'heuristic-classified' : null,
     c.uncertainty?.any_inherited ? 'inherited' : null,
-  ].filter(Boolean).join(', ');
+  ]
+    .filter(Boolean)
+    .join(', ');
   return `<div class="exp-cap">
     <b>${esc(c.name || c.id)}</b>
     <span class="cap-badge ${tier.cls}" title="${esc(tier.hint)}">${esc(tier.label)}</span>
@@ -223,7 +262,10 @@ function bcapSection(bcaps) {
     groups.get(d).push(c);
   }
   return [...groups.entries()]
-    .map(([d, rows]) => `<div class="exp-domain"><div class="small dim exp-domain-h">${esc(d)}</div>${rows.map(bcapRow).join('')}</div>`)
+    .map(
+      ([d, rows]) =>
+        `<div class="exp-domain"><div class="small dim exp-domain-h">${esc(d)}</div>${rows.map(bcapRow).join('')}</div>`
+    )
     .join('');
 }
 
@@ -285,17 +327,27 @@ export function outlookCell(o) {
     return `${prefix} in ~${Math.ceil(ms / 60000)} min if idle`;
   };
   switch (o.kind) {
-    case 'queued': return '<span class="ok">queued…</span>';
-    case 'pending': return '<span class="ok">classifying now…</span>';
-    case 'idle': return countdown('auto');
-    case 'recheck': return countdown('re-check');
-    case 'upgrade': return countdown('heuristic upgrade');
-    case 'waiting_turn': return 'after the first completed turn';
-    case 'never': return '<span class="dim">never — empty shell</span>';
-    case 'failed': return o.auth
-      ? '<span class="bad">needs claude login, then retry</span>'
-      : '<span class="bad">retry manually</span>';
-    case 'paused_auth': return '<span class="bad">paused — classifier auth failing</span>';
-    default: return '<span class="dim">—</span>';
+    case 'queued':
+      return '<span class="ok">queued…</span>';
+    case 'pending':
+      return '<span class="ok">classifying now…</span>';
+    case 'idle':
+      return countdown('auto');
+    case 'recheck':
+      return countdown('re-check');
+    case 'upgrade':
+      return countdown('heuristic upgrade');
+    case 'waiting_turn':
+      return 'after the first completed turn';
+    case 'never':
+      return '<span class="dim">never — empty shell</span>';
+    case 'failed':
+      return o.auth
+        ? '<span class="bad">needs claude login, then retry</span>'
+        : '<span class="bad">retry manually</span>';
+    case 'paused_auth':
+      return '<span class="bad">paused — classifier auth failing</span>';
+    default:
+      return '<span class="dim">—</span>';
   }
 }

@@ -26,8 +26,14 @@ test('origin, trailing slash and full ingest URL all resolve to the same calls',
 });
 
 test('a deployment under a sub-path keeps its prefix', () => {
-  assert.strictEqual(ingestUrl('https://example.net/statusline'), 'https://example.net/statusline/v1/ingest');
-  assert.strictEqual(ingestUrl('https://example.net/statusline/v1/ingest'), 'https://example.net/statusline/v1/ingest');
+  assert.strictEqual(
+    ingestUrl('https://example.net/statusline'),
+    'https://example.net/statusline/v1/ingest'
+  );
+  assert.strictEqual(
+    ingestUrl('https://example.net/statusline/v1/ingest'),
+    'https://example.net/statusline/v1/ingest'
+  );
 });
 
 test('junk degrades without throwing (callers surface the failure)', () => {

@@ -18,42 +18,105 @@ const DEFAULTS = {
   // collapsed-name → canonical token. Keys/values are post-collapse form:
   // lowercase alphanumerics (plus '-').
   aliases: {
-    node: 'nodejs', nodejs: 'nodejs', ts: 'typescript', js: 'javascript',
-    postgres: 'postgresql', postgresql: 'postgresql', k8s: 'kubernetes',
-    gcp: 'googlecloud', golang: 'golang', go: 'golang',
+    node: 'nodejs',
+    nodejs: 'nodejs',
+    ts: 'typescript',
+    js: 'javascript',
+    postgres: 'postgresql',
+    postgresql: 'postgresql',
+    k8s: 'kubernetes',
+    gcp: 'googlecloud',
+    golang: 'golang',
+    go: 'golang',
     // .NET family — the single biggest name-fragmentation source in the
     // 2026-08 eval (11 of 22 name-variant findings).
-    dotnetcore: 'dotnet', aspdotnet: 'dotnet', aspdotnetcore: 'dotnet',
-    aspdotnetcoremvc: 'dotnet', razor: 'dotnet', cshtml: 'dotnet',
+    dotnetcore: 'dotnet',
+    aspdotnet: 'dotnet',
+    aspdotnetcore: 'dotnet',
+    aspdotnetcoremvc: 'dotnet',
+    razor: 'dotnet',
+    cshtml: 'dotnet',
     razorcshtml: 'dotnet',
     // frequent display-form variants
-    gsc: 'googlesearchconsole', googlesearchconsole: 'googlesearchconsole',
-    mongodbatlas: 'mongodb', azureappservice: 'azure', azureblobstorage: 'azure',
-    azurekeyvault: 'azure', azurewebapp: 'azure', azurefunctions: 'azure',
-    chromeextensionmv3: 'chromeextension', chromeextensionsmv3: 'chromeextension',
-    claudecodehooks: 'claudecode', xlsx: 'excel',
+    gsc: 'googlesearchconsole',
+    googlesearchconsole: 'googlesearchconsole',
+    mongodbatlas: 'mongodb',
+    azureappservice: 'azure',
+    azureblobstorage: 'azure',
+    azurekeyvault: 'azure',
+    azurewebapp: 'azure',
+    azurefunctions: 'azure',
+    chromeextensionmv3: 'chromeextension',
+    chromeextensionsmv3: 'chromeextension',
+    claudecodehooks: 'claudecode',
+    xlsx: 'excel',
   },
 
   // file extension (as folded into state.tools.extensions) → canonical token.
   ext_tech: {
-    '.ts': 'typescript', '.tsx': 'typescript', '.js': 'javascript', '.jsx': 'javascript',
-    '.mjs': 'javascript', '.cjs': 'javascript', '.py': 'python', '.ipynb': 'python',
-    '.rb': 'ruby', '.go': 'golang', '.rs': 'rust', '.java': 'java', '.kt': 'kotlin',
-    '.cs': 'csharp', '.php': 'php', '.sql': 'sql', '.tf': 'terraform', '.vue': 'vue',
-    '.svelte': 'svelte', '.css': 'css', '.scss': 'css', '.html': 'html',
-    '.ps1': 'powershell', '.sh': 'bash', '.swift': 'swift', '.dart': 'dart',
-    '.cshtml': 'dotnet', '.razor': 'dotnet',
+    '.ts': 'typescript',
+    '.tsx': 'typescript',
+    '.js': 'javascript',
+    '.jsx': 'javascript',
+    '.mjs': 'javascript',
+    '.cjs': 'javascript',
+    '.py': 'python',
+    '.ipynb': 'python',
+    '.rb': 'ruby',
+    '.go': 'golang',
+    '.rs': 'rust',
+    '.java': 'java',
+    '.kt': 'kotlin',
+    '.cs': 'csharp',
+    '.php': 'php',
+    '.sql': 'sql',
+    '.tf': 'terraform',
+    '.vue': 'vue',
+    '.svelte': 'svelte',
+    '.css': 'css',
+    '.scss': 'css',
+    '.html': 'html',
+    '.ps1': 'powershell',
+    '.sh': 'bash',
+    '.swift': 'swift',
+    '.dart': 'dart',
+    '.cshtml': 'dotnet',
+    '.razor': 'dotnet',
   },
 
   // shell-command first token → canonical token.
   cmd_tech: {
-    npm: 'nodejs', npx: 'nodejs', node: 'nodejs', pnpm: 'nodejs', yarn: 'nodejs',
-    docker: 'docker', 'docker-compose': 'docker', kubectl: 'kubernetes', helm: 'kubernetes',
-    terraform: 'terraform', psql: 'postgresql', mysql: 'mysql', sqlite3: 'sqlite',
-    aws: 'aws', gcloud: 'googlecloud', az: 'azure', cargo: 'rust', rustc: 'rust',
-    pip: 'python', pip3: 'python', python: 'python', python3: 'python', uv: 'python',
-    dotnet: 'dotnet', vercel: 'vercel', netlify: 'netlify', firebase: 'firebase',
-    supabase: 'supabase', prisma: 'prisma', gh: 'github', wrangler: 'cloudflare',
+    npm: 'nodejs',
+    npx: 'nodejs',
+    node: 'nodejs',
+    pnpm: 'nodejs',
+    yarn: 'nodejs',
+    docker: 'docker',
+    'docker-compose': 'docker',
+    kubectl: 'kubernetes',
+    helm: 'kubernetes',
+    terraform: 'terraform',
+    psql: 'postgresql',
+    mysql: 'mysql',
+    sqlite3: 'sqlite',
+    aws: 'aws',
+    gcloud: 'googlecloud',
+    az: 'azure',
+    cargo: 'rust',
+    rustc: 'rust',
+    pip: 'python',
+    pip3: 'python',
+    python: 'python',
+    python3: 'python',
+    uv: 'python',
+    dotnet: 'dotnet',
+    vercel: 'vercel',
+    netlify: 'netlify',
+    firebase: 'firebase',
+    supabase: 'supabase',
+    prisma: 'prisma',
+    gh: 'github',
+    wrangler: 'cloudflare',
   },
 };
 
@@ -69,10 +132,22 @@ const CHAR_SUBS = [
 // Trailing qualifier tokens that carry no capability identity ("Gemini API",
 // "GitHub CLI", "TrustMRR MCP server"). Only dropped while more tokens remain,
 // so single-token names like "fastapi" are never touched.
-const DROP_TRAILING = new Set(['mcp', 'server', 'servers', 'api', 'apis', 'cli', 'sdk', 'tool', 'tools']);
+const DROP_TRAILING = new Set([
+  'mcp',
+  'server',
+  'servers',
+  'api',
+  'apis',
+  'cli',
+  'sdk',
+  'tool',
+  'tools',
+]);
 
 function collapseOne(part, aliases) {
-  let s = String(part).toLowerCase().replace(/\([^)]*\)/g, ' '); // "GitHub CLI (gh)" → "github cli"
+  let s = String(part)
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, ' '); // "GitHub CLI (gh)" → "github cli"
   for (const [re, sub] of CHAR_SUBS) s = s.replace(re, sub);
   let tokens = s.split(/[^a-z0-9-]+/).filter(Boolean);
   // MCP server ids arrive as claude_ai_<Name>[_MCP]; the prefix is transport,
@@ -94,7 +169,10 @@ function createNormalizer(tables = DEFAULTS) {
   function canonicalsOf(name) {
     let s = String(name);
     for (const [re, sub] of CHAR_SUBS) s = s.replace(re, sub);
-    const parts = s.split(/[\/,+&]+/).map((p) => p.trim()).filter(Boolean);
+    const parts = s
+      .split(/[/,+&]+/)
+      .map((p) => p.trim())
+      .filter(Boolean);
     const out = [];
     for (const p of parts.length ? parts : [s]) {
       const c = collapseOne(p, aliases);
@@ -119,7 +197,10 @@ function createNormalizer(tables = DEFAULTS) {
 // win; defaults survive for keys the overlay doesn't mention).
 function mergeTables(defaults, overlay) {
   if (!overlay) return defaults;
-  const out = { ...defaults, version: overlay.version !== undefined ? overlay.version : defaults.version };
+  const out = {
+    ...defaults,
+    version: overlay.version !== undefined ? overlay.version : defaults.version,
+  };
   for (const section of ['aliases', 'ext_tech', 'cmd_tech']) {
     if (overlay[section]) out[section] = { ...defaults[section], ...overlay[section] };
   }
@@ -200,10 +281,14 @@ function validateOverlay(obj) {
       for (const [id, e] of Object.entries(src)) {
         const ok =
           CAP_ID_RE.test(id) &&
-          e && typeof e === 'object' && !Array.isArray(e) &&
-          typeof e.name === 'string' && CAP_NAME_RE.test(e.name) &&
+          e &&
+          typeof e === 'object' &&
+          !Array.isArray(e) &&
+          typeof e.name === 'string' &&
+          CAP_NAME_RE.test(e.name) &&
           (e.gloss === undefined || (typeof e.gloss === 'string' && CAP_GLOSS_RE.test(e.gloss))) &&
-          (e.domain === undefined || (typeof e.domain === 'string' && CAP_DOMAIN_RE.test(e.domain)));
+          (e.domain === undefined ||
+            (typeof e.domain === 'string' && CAP_DOMAIN_RE.test(e.domain)));
         if (ok) {
           clean[id] = {
             name: e.name,
@@ -218,7 +303,8 @@ function validateOverlay(obj) {
             }
             const items = [];
             for (const item of e[field]) {
-              if (typeof item === 'string' && CAP_POLICY_RE.test(item) && !items.includes(item)) items.push(item);
+              if (typeof item === 'string' && CAP_POLICY_RE.test(item) && !items.includes(item))
+                items.push(item);
               else errors.push(`capabilities.${id}.${field}: dropped invalid item`);
             }
             clean[id][field] = items;

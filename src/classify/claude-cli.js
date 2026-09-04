@@ -1,3 +1,4 @@
+// @ts-check
 'use strict';
 // Adapter that runs the classification prompt through the local `claude` CLI
 // in headless print mode. Auth rides on the user's existing Claude Code
@@ -5,23 +6,84 @@
 // hook-forward.js and the beep plugin) plus --safe-mode (hooks and all
 // customizations disabled).
 const { spawn } = require('child_process');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 const { paths } = require('../paths');
-const log = require('../util/log');
 const { resolveCommand, detachOptions, killTree } = require('../util/platform');
 
+// The bare command name, which is also the config default: `cli_path` staying
+// at this value is what "the operator did not name a location" means.
+const CLI_NAME = 'claude';
+
+/** @type {string | null} */
 let resolvedCli = null;
 
-function resolveCli(cliPath) {
-  if (cliPath !== 'claude') return cliPath; // explicit path configured
+/**
+ * Directories Claude Code installs into. A PATH lookup answers this for a
+ * watcher started from a shell, but a launchd agent inherits
+ * `/usr/bin:/bin:/usr/sbin:/sbin` and none of these sit on it.
+ * @returns {string[]}
+ */
+function claudeInstallDirs() {
+  return [
+    path.join(os.homedir(), '.local', 'bin'), // the native installer's default
+    path.dirname(process.execPath), // npm global lands in the bin of its own Node
+    '/opt/homebrew/bin',
+    '/usr/local/bin',
+  ];
+}
+
+/**
+ * @returns {string | null} absolute path to the CLI, or null
+ */
+function probeInstallDirs() {
+  for (const dir of claudeInstallDirs()) {
+    const candidate = path.join(dir, CLI_NAME);
+
+    try {
+      fs.accessSync(candidate, fs.constants.X_OK);
+      return candidate;
+    } catch {
+      /* absent, or present without the executable bit */
+    }
+  }
+
+  return null;
+}
+
+/**
+ * @param {string} cliPath the configured `classifier.cli_path`
+ * @returns {string | null} where the CLI is, or null when nothing was found
+ */
+function resolveClassifierCli(cliPath) {
+  if (cliPath !== CLI_NAME) return cliPath; // explicit path configured
   if (resolvedCli) return resolvedCli;
-  resolvedCli = resolveCommand('claude') || 'claude';
+  resolvedCli = resolveCommand(CLI_NAME) || probeInstallDirs();
   return resolvedCli;
 }
 
-// Runs one prompt, returns { code, stdout, stderr, timedOut }.
+/**
+ * The four properties of the `classifier` block in `src/config.js` that this
+ * adapter reads. That block carries more.
+ * @typedef {object} ClassifierConfig
+ * @property {string} model
+ * @property {string} [effort]
+ * @property {string} cli_path
+ * @property {number} timeout_ms
+ */
+
+/**
+ * Runs one prompt.
+ * @param {string} prompt
+ * @param {ClassifierConfig} cfg
+ * @returns {Promise<{code: number | null, stdout: string, stderr: string, timedOut: boolean}>}
+ */
 function runClaude(prompt, cfg) {
   return new Promise((resolve) => {
-    const cli = resolveCli(cfg.cli_path);
+    // When resolution finds nothing, spawn still gets the bare name and reports
+    // ENOENT, which is the failure the caller needs to see.
+    const cli = resolveClassifierCli(cfg.cli_path) || CLI_NAME;
     const args = [
       '-p',
       '--model',
@@ -52,6 +114,10 @@ function runClaude(prompt, cfg) {
       killTree(child.pid);
     }, cfg.timeout_ms);
 
+    /**
+     * @param {number | null} code
+     * @param {Error} [err]
+     */
     const settle = (code, err) => {
       if (settled) return;
       settled = true;
@@ -69,6 +135,10 @@ function runClaude(prompt, cfg) {
   });
 }
 
+/**
+ * @param {unknown} text
+ * @returns {object | null} first balanced JSON object in the text
+ */
 function extractJsonObject(text) {
   if (typeof text !== 'string') return null;
   let t = text.trim();
@@ -111,21 +181,29 @@ function extractJsonObject(text) {
 
 const AUTH_RE = /log ?in|logged out|oauth|401|credential|unauthorized|authentication|api key/i;
 
-// One classification attempt. Returns:
-// { outcome: 'ok', json }  or  { outcome: 'timeout'|'auth_error'|'nonzero_exit'|'parse_error', detail }
+/**
+ * One classification attempt.
+ * @param {string} prompt
+ * @param {ClassifierConfig} cfg
+ * @returns {Promise<({outcome: 'ok', json: object} & CallFacts)
+ *   | {outcome: 'timeout' | 'auth_error' | 'nonzero_exit' | 'parse_error', detail: string}>}
+ */
 async function attempt(prompt, cfg) {
   const res = await runClaude(prompt, cfg);
   if (res.timedOut) return { outcome: 'timeout', detail: `no result within ${cfg.timeout_ms}ms` };
   if (res.code !== 0) {
     const detail = (res.stderr || res.stdout || '').slice(0, 2000);
-    return { outcome: AUTH_RE.test(detail) ? 'auth_error' : 'nonzero_exit', detail: `exit ${res.code}: ${detail}` };
+    return {
+      outcome: AUTH_RE.test(detail) ? 'auth_error' : 'nonzero_exit',
+      detail: `exit ${res.code}: ${detail}`,
+    };
   }
   // --output-format json envelope: { type:"result", subtype, result: "...", is_error, ... }
-  let envelope = null;
+  let envelope;
   try {
     envelope = JSON.parse(res.stdout);
-  } catch (e) {
-    envelope = null;
+  } catch {
+    /* not the JSON envelope — the raw stdout is used below instead */
   }
   const resultText = envelope && typeof envelope.result === 'string' ? envelope.result : res.stdout;
   if (envelope && envelope.is_error) {
@@ -133,16 +211,38 @@ async function attempt(prompt, cfg) {
     return { outcome: AUTH_RE.test(detail) ? 'auth_error' : 'nonzero_exit', detail };
   }
   const json = extractJsonObject(resultText);
-  if (!json) return { outcome: 'parse_error', detail: `no JSON object in result: ${String(resultText).slice(0, 500)}` };
+  if (!json)
+    return {
+      outcome: 'parse_error',
+      detail: `no JSON object in result: ${String(resultText).slice(0, 500)}`,
+    };
   return { outcome: 'ok', json, ...callFacts(envelope) };
 }
 
-// What the call actually cost and which model actually served it. The configured
-// name ("haiku") is only a request; modelUsage is the answer, so the egress log
-// can prove which model ran rather than restating the setting.
+/**
+ * What the call cost and which model served it. The configured name is only a
+ * request. `modelUsage` is the answer, so the egress log can prove which model
+ * ran rather than restating the setting.
+ * @typedef {object} CallFacts
+ * @property {string} [actual_model]
+ * @property {number} [cost_usd]
+ * @property {number} [input_tokens]
+ * @property {number} [cache_read_tokens]
+ * @property {number} [cache_creation_tokens]
+ * @property {number} [output_tokens]
+ */
+
+/**
+ * @param {any} envelope the `--output-format json` result, straight off the CLI
+ * @returns {CallFacts}
+ */
 function callFacts(envelope) {
   if (!envelope) return {};
-  const models = envelope.modelUsage && typeof envelope.modelUsage === 'object' ? Object.keys(envelope.modelUsage) : [];
+  const models =
+    envelope.modelUsage && typeof envelope.modelUsage === 'object'
+      ? Object.keys(envelope.modelUsage)
+      : [];
+  /** @type {CallFacts} */
   const facts = {};
   if (models.length) facts.actual_model = models.length === 1 ? models[0] : models.join(',');
   if (typeof envelope.total_cost_usd === 'number') facts.cost_usd = envelope.total_cost_usd;
@@ -150,15 +250,18 @@ function callFacts(envelope) {
   // is what "tokens this call processed" means; keeping the parts lets the UI
   // explain a cheap call that still moved a lot of tokens.
   const u = envelope.usage || {};
+  /** @param {unknown} x */
   const num = (x) => (typeof x === 'number' && isFinite(x) ? x : 0);
-  const inputParts = num(u.input_tokens) + num(u.cache_read_input_tokens) + num(u.cache_creation_input_tokens);
+  const inputParts =
+    num(u.input_tokens) + num(u.cache_read_input_tokens) + num(u.cache_creation_input_tokens);
   if (inputParts) {
     facts.input_tokens = inputParts;
     if (num(u.cache_read_input_tokens)) facts.cache_read_tokens = u.cache_read_input_tokens;
-    if (num(u.cache_creation_input_tokens)) facts.cache_creation_tokens = u.cache_creation_input_tokens;
+    if (num(u.cache_creation_input_tokens))
+      facts.cache_creation_tokens = u.cache_creation_input_tokens;
   }
   if (typeof u.output_tokens === 'number') facts.output_tokens = u.output_tokens;
   return facts;
 }
 
-module.exports = { attempt, extractJsonObject, kind: 'claude-cli' };
+module.exports = { attempt, extractJsonObject, resolveClassifierCli, kind: 'claude-cli' };

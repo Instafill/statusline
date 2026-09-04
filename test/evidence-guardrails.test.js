@@ -132,7 +132,10 @@ test('alias canonicalization verifies Node.js from npm and Postgres from psql', 
     const t = merged.find((x) => x.name === name);
     assert.strictEqual(t.evidence, 'hands_on', `${name} not matched to its command evidence`);
     assert.strictEqual(t.verified, true);
-    assert.ok(t.basis.some((b) => b.startsWith('tool:')), `${name} basis lacks tool source`);
+    assert.ok(
+      t.basis.some((b) => b.startsWith('tool:')),
+      `${name} basis lacks tool source`
+    );
   }
 });
 
@@ -152,7 +155,10 @@ test('schema coercion of invalid enums always under-claims, never over-claims', 
   assert.strictEqual(v.value.technologies[0].evidence, 'mentioned'); // weakest level
   // Every coercion leaves a trace for _meta.validation_warnings.
   for (const field of ['work_category', 'work_depth', 'work_stage', 'technologies[].evidence']) {
-    assert.ok(v.errors.some((e) => e.startsWith(field)), `no warning recorded for ${field}`);
+    assert.ok(
+      v.errors.some((e) => e.startsWith(field)),
+      `no warning recorded for ${field}`
+    );
   }
   // Core fields stay fatal.
   assert.strictEqual(validate({ professional_work: 'yes', confidence: 0.5 }).ok, false);
@@ -167,7 +173,14 @@ test('aggregation preserves verification: project-level hands_on distinguishes t
       industry: [],
       tasks: [],
       project_hint: 'one',
-      technologies: [{ name: 'React', evidence: 'hands_on', basis: ['semantic', 'tool:.tsx_files'], verified: true }],
+      technologies: [
+        {
+          name: 'React',
+          evidence: 'hands_on',
+          basis: ['semantic', 'tool:.tsx_files'],
+          verified: true,
+        },
+      ],
     },
   });
   const unverifiedState = mkState({
@@ -181,7 +194,11 @@ test('aggregation preserves verification: project-level hands_on distinguishes t
       technologies: [{ name: 'React', evidence: 'hands_on', basis: ['semantic'], verified: false }],
     },
   });
-  const { projects } = groupSessions([verifiedState, unverifiedState], EMPTY_CORRECTIONS, WINDOWS_PATH_OPTS);
+  const { projects } = groupSessions(
+    [verifiedState, unverifiedState],
+    EMPTY_CORRECTIONS,
+    WINDOWS_PATH_OPTS
+  );
   assert.strictEqual(projects.length, 2);
   const byCwd = (cwd) => projects.find((p) => p.key.value.includes(cwd));
   const verifiedAgg = byCwd('one').aggregate.technologies.find((t) => t.canonical === 'react');
@@ -207,7 +224,10 @@ test('digest keeps TOOL ACTIVITY through shrink levels; evidence merge never dep
     })),
     tools: {
       by_name: { Bash: 200, Edit: 200 },
-      bash_commands: Array.from({ length: 200 }, (_, i) => `npm run step-${i} -- --flag value-${i}`),
+      bash_commands: Array.from(
+        { length: 200 },
+        (_, i) => `npm run step-${i} -- --flag value-${i}`
+      ),
       files_touched: Array.from({ length: 100 }, (_, i) => `C:\\proj\\demo\\src\\file-${i}.ts`),
       extensions: { '.ts': 200 },
       mcp_servers: [],

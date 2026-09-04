@@ -8,7 +8,8 @@ const path = require('path');
 // unparseable. `exists` lets callers distinguish "no file" from "bad file".
 function readJson(file, fallback) {
   try {
-    return JSON.parse(fs.readFileSync(file, 'utf8').replace(/^﻿/, ''));
+    const text = fs.readFileSync(file, 'utf8');
+    return JSON.parse(text.charCodeAt(0) === 0xfeff ? text.slice(1) : text);
   } catch (e) {
     return fallback;
   }

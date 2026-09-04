@@ -112,7 +112,9 @@ function load(force) {
   const overlay = readJson(paths.config, null);
   if (!overlay) {
     if (fileExists(paths.config)) {
-      console.error(`statusline: ${paths.config} is not valid JSON — running on defaults, file left untouched. Fix it and restart.`);
+      console.error(
+        `statusline: ${paths.config} is not valid JSON — running on defaults, file left untouched. Fix it and restart.`
+      );
     } else {
       writeJsonAtomic(paths.config, DEFAULTS);
     }

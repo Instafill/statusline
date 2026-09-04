@@ -84,7 +84,8 @@ function detect({ root = agentRoot.AGENT_ROOT, homeDir = os.homedir() } = {}) {
   // which is the whole reason this distinction is worth reporting.
   const there = realpath(personalDir(homeDir));
   const here = realpath(shippedDir(root));
-  const via = there && here ? (there === here ? 'linked' : 'copied') : matches ? 'linked' : 'copied';
+  const via =
+    there && here ? (there === here ? 'linked' : 'copied') : matches ? 'linked' : 'copied';
 
   return { installed: true, via, sha: personalSha, matches_agent: matches, shadowed: false };
 }

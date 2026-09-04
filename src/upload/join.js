@@ -15,12 +15,22 @@ const { enrollUrl, endpointHost } = require('./endpoints');
 const TIMEOUT_MS = 15 * 1000;
 
 async function join(url, code) {
-  const endpoint = String(url || '').trim().replace(/\/+$/, '');
-  if (!/^https?:\/\//.test(endpoint)) throw new Error('usage: join <https://team-endpoint> <enroll-code>');
-  if (!code || !/^[A-Za-z0-9_-]{20,}$/.test(code)) throw new Error('that does not look like an enroll code — copy the whole join command from your dashboard');
+  const endpoint = String(url || '')
+    .trim()
+    .replace(/\/+$/, '');
+  if (!/^https?:\/\//.test(endpoint))
+    throw new Error('usage: join <https://team-endpoint> <enroll-code>');
+  if (!code || !/^[A-Za-z0-9_-]{20,}$/.test(code))
+    throw new Error(
+      'that does not look like an enroll code — copy the whole join command from your dashboard'
+    );
 
   const machine = machineIdentity();
-  const entry = { kind: 'enroll', endpoint_host: endpointHost(endpoint), machine_id: machine.machine_id };
+  const entry = {
+    kind: 'enroll',
+    endpoint_host: endpointHost(endpoint),
+    machine_id: machine.machine_id,
+  };
   const t0 = Date.now();
   let res;
   let json = null;
@@ -48,15 +58,24 @@ async function join(url, code) {
     entry.outcome = e.name === 'AbortError' ? 'timeout' : 'network_error';
     entry.error = String(e.message || e).slice(0, 200);
     egress.record(entry);
-    throw new Error(`could not reach ${endpoint}: ${entry.error}`);
+    throw new Error(`could not reach ${endpoint}: ${entry.error}`, { cause: e });
   }
   if (!res.ok || !json || !json.machine_token) {
-    throw new Error(`enrollment refused (${res.status}): ${(json && (json.error || JSON.stringify(json.errors))) || 'unknown error'}`);
+    throw new Error(
+      `enrollment refused (${res.status}): ${(json && (json.error || JSON.stringify(json.errors))) || 'unknown error'}`
+    );
   }
 
   // The credential lives ONLY here (the server stores its sha256).
-  config.save({ upload: { enabled: true, endpoint: json.endpoint || endpoint, token: json.machine_token } });
-  return { machine_id: machine.machine_id, org: json.org, practitioner_id: json.practitioner_id, endpoint: json.endpoint || endpoint };
+  config.save({
+    upload: { enabled: true, endpoint: json.endpoint || endpoint, token: json.machine_token },
+  });
+  return {
+    machine_id: machine.machine_id,
+    org: json.org,
+    practitioner_id: json.practitioner_id,
+    endpoint: json.endpoint || endpoint,
+  };
 }
 
 module.exports = { join };

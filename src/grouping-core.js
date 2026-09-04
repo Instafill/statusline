@@ -5,7 +5,6 @@
 // local grouper must stay byte-compatible with historical Windows-normalized
 // project ids, while the cloud groups paths from mixed-OS machines.
 const crypto = require('crypto');
-const path = require('path');
 
 // `engagements` is the durable business-identity registry: minted ids claiming
 // projects by RAW keys (git_root paths, origin URLs), normalized only at match
@@ -14,7 +13,13 @@ const path = require('path');
 // cloud ids. Shape:
 //   engagements: { 'eng_x': { name, kind: 'internal'|'client'|null,
 //                             keys: [{kind:'git_root'|'origin', value}], note } }
-const EMPTY_CORRECTIONS = { v: 1, sessions: {}, projects: {}, dismissed_merges: [], engagements: {} };
+const EMPTY_CORRECTIONS = {
+  v: 1,
+  sessions: {},
+  projects: {},
+  dismissed_merges: [],
+  engagements: {},
+};
 
 // Historical local normalization (lowercase, / -> \). Changing this would
 // change projectIdOf() hashes and orphan every corrections.json project entry.
@@ -33,7 +38,10 @@ function crossPlatformBasename(p) {
   return parts.length ? parts[parts.length - 1] : String(p);
 }
 
-const WINDOWS_PATH_OPTS = { normKey: windowsNormKey, sep: '\\', basename: path.basename };
+// normKey rewrites every path to one separator regardless of the host, so the
+// value a name is derived from is Windows-shaped on macOS and Linux too. The
+// basename must split on both separators.
+const WINDOWS_PATH_OPTS = { normKey: windowsNormKey, sep: '\\', basename: crossPlatformBasename };
 const SLASH_PATH_OPTS = { normKey: slashNormKey, sep: '/', basename: crossPlatformBasename };
 
 function projectIdOf(kind, value) {
@@ -67,14 +75,33 @@ function isCatchAllCwd(normValue) {
 }
 
 const STOPWORDS = new Set([
-  'the', 'a', 'an', 'and', 'or', 'of', 'for', 'to', 'in', 'on', 'with', 'project',
-  'app', 'application', 'system', 'work', 'client', 'new', 'main',
+  'the',
+  'a',
+  'an',
+  'and',
+  'or',
+  'of',
+  'for',
+  'to',
+  'in',
+  'on',
+  'with',
+  'project',
+  'app',
+  'application',
+  'system',
+  'work',
+  'client',
+  'new',
+  'main',
 ]);
 
 function hintTokens(hints) {
   const out = new Set();
   for (const h of hints) {
-    for (const w of String(h).toLowerCase().split(/[^a-z0-9]+/)) {
+    for (const w of String(h)
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)) {
       if (w.length >= 3 && !STOPWORDS.has(w)) out.add(w);
     }
   }
@@ -114,7 +141,8 @@ function effectiveClassification(state, corrections) {
 
 function resolveMerged(corrections, id, depth = 0) {
   const entry = corrections.projects[id];
-  if (entry && entry.merged_into && depth < 10) return resolveMerged(corrections, entry.merged_into, depth + 1);
+  if (entry && entry.merged_into && depth < 10)
+    return resolveMerged(corrections, entry.merged_into, depth + 1);
   return id;
 }
 
@@ -165,7 +193,9 @@ const EVIDENCE_ROWS_CAP = 25;
 // states + corrections -> { projects: [...] } (sorted, not stamped/persisted).
 function groupSessions(states, corrections, opts = WINDOWS_PATH_OPTS) {
   const { normKey, sep, basename } = opts;
-  const active = states.filter((s) => (corrections.sessions[s.session_id] || {}).label !== 'ignore');
+  const active = states.filter(
+    (s) => (corrections.sessions[s.session_id] || {}).label !== 'ignore'
+  );
 
   // Pass 1: deterministic keys, with cwd-inside-git-root absorption. A linked
   // worktree folds into its parent repo (git_main_root), so the parent's
@@ -194,12 +224,15 @@ function groupSessions(states, corrections, opts = WINDOWS_PATH_OPTS) {
   // a repo whose remote URL changes carries its origin-less history forward.
   const originByRoot = new Map(); // normalized root -> newest origin seen there
   const byRecency = [...active].sort((a, b) =>
-    String(a.last_event_at || a.created_at || '').localeCompare(String(b.last_event_at || b.created_at || ''))
+    String(a.last_event_at || a.created_at || '').localeCompare(
+      String(b.last_event_at || b.created_at || '')
+    )
   );
   for (const s of byRecency) {
     const origin = normOrigin(s.git_origin);
     if (!origin) continue;
-    for (const root of [s.git_main_root, s.git_root]) if (root) originByRoot.set(normKey(root), origin);
+    for (const root of [s.git_main_root, s.git_root])
+      if (root) originByRoot.set(normKey(root), origin);
   }
 
   // A repo with no remote anywhere has never left the machine it is on, so
@@ -215,7 +248,9 @@ function groupSessions(states, corrections, opts = WINDOWS_PATH_OPTS) {
   for (const s of active) {
     const key = repoKey(s);
     if (!key) continue;
-    for (const root of [s.git_main_root, s.git_root]) if (root) gitRoots.set(normKey(root), [key, 'cwd_absorbed']);
+
+    for (const root of [s.git_main_root, s.git_root])
+      if (root) gitRoots.set(normKey(root), [key, 'cwd_absorbed']);
   }
 
   const keyFor = (s) => {
@@ -299,7 +334,12 @@ function groupSessions(states, corrections, opts = WINDOWS_PATH_OPTS) {
   if (engDefs.length) {
     const engFor = (proj) => {
       for (const d of engDefs) {
-        if ((proj.key.kind === 'git_root' || proj.key.kind === 'cwd') && d.pathKeys.has(proj.key.value)) return d;
+        if (
+          (proj.key.kind === 'git_root' || proj.key.kind === 'cwd') &&
+          d.pathKeys.has(proj.key.value)
+        )
+          return d;
+
         // An origin-keyed project carries no path in its key, but a registry
         // entry may well have been declared against the git_root someone was
         // looking at when they declared it — match the members' roots too, or
@@ -311,6 +351,7 @@ function groupSessions(states, corrections, opts = WINDOWS_PATH_OPTS) {
             }
           }
         }
+
         if (d.originKeys.size) {
           for (const s of proj._states) {
             const o = normOrigin(s.git_origin);
@@ -323,7 +364,8 @@ function groupSessions(states, corrections, opts = WINDOWS_PATH_OPTS) {
     for (const [id, proj] of [...projects]) {
       const d = engFor(proj);
       if (!d) continue;
-      const target = projects.get(d.engId) || ensureProject(d.engId, { kind: 'engagement', value: d.engId });
+      const target =
+        projects.get(d.engId) || ensureProject(d.engId, { kind: 'engagement', value: d.engId });
       target.key = { kind: 'engagement', value: d.engId };
       target.engagement_id = d.engId;
       target.engagement_kind = d.e.kind || null;
@@ -381,7 +423,8 @@ function groupSessions(states, corrections, opts = WINDOWS_PATH_OPTS) {
       const via = (cls._meta && cls._meta.classifier) || 'unknown';
       agg.via[via] = (agg.via[via] || 0) + 1;
       for (const ind of cls.industry || []) industrySet.add(ind);
-      for (const t of cls.tasks || []) taskLines.push({ text: t, at: s.last_event_at || s.created_at });
+      for (const t of cls.tasks || [])
+        taskLines.push({ text: t, at: s.last_event_at || s.created_at });
       if (cls.project_hint) hints.push(cls.project_hint);
       for (const tech of cls.technologies || []) {
         // Aggregate by canonical name so display-form variants ("C# / .NET",
@@ -409,7 +452,10 @@ function groupSessions(states, corrections, opts = WINDOWS_PATH_OPTS) {
           }
           if (tech.verified) {
             cur.verified_sessions++;
-            if (!cur.verified_max_evidence || EVIDENCE_WEIGHT[tech.evidence] > EVIDENCE_WEIGHT[cur.verified_max_evidence]) {
+            if (
+              !cur.verified_max_evidence ||
+              EVIDENCE_WEIGHT[tech.evidence] > EVIDENCE_WEIGHT[cur.verified_max_evidence]
+            ) {
               cur.verified_max_evidence = tech.evidence;
             }
           }
@@ -438,7 +484,9 @@ function groupSessions(states, corrections, opts = WINDOWS_PATH_OPTS) {
     // "Recent work": the newest task lines with their session dates. Replaces
     // the old top-by-frequency list — free-text task phrases essentially never
     // repeat verbatim, so frequency ranking degenerated to ten random phrases.
-    agg.tasks_recent = taskLines.sort((a, b) => String(a.at).localeCompare(String(b.at))).slice(-10);
+    agg.tasks_recent = taskLines
+      .sort((a, b) => String(a.at).localeCompare(String(b.at)))
+      .slice(-10);
     agg.active_days = daySet.size;
     agg.machine_ids = [...machineSet];
     agg.technologies = Object.entries(techMap)
@@ -448,7 +496,13 @@ function groupSessions(states, corrections, opts = WINDOWS_PATH_OPTS) {
         // Counts stay exact regardless of the cap; the trace keeps the most
         // defensible rows (verified first, then most recent).
         evidence: t.evidence
-          .sort((x, y) => (y.verified === x.verified ? String(y.at).localeCompare(String(x.at)) : y.verified ? 1 : -1))
+          .sort((x, y) =>
+            y.verified === x.verified
+              ? String(y.at).localeCompare(String(x.at))
+              : y.verified
+                ? 1
+                : -1
+          )
           .slice(0, EVIDENCE_ROWS_CAP),
       }))
       .sort(
@@ -476,7 +530,8 @@ function groupSessions(states, corrections, opts = WINDOWS_PATH_OPTS) {
       (['manual', 'session', 'engagement'].includes(proj.key.kind) || proj.key.value === 'unknown'
         ? null
         : basename(proj.key.value)) ||
-      (hints[0] || proj.id);
+      hints[0] ||
+      proj.id;
   }
 
   // Pass 2: merge suggestions.
@@ -492,8 +547,14 @@ function groupSessions(states, corrections, opts = WINDOWS_PATH_OPTS) {
       if (dismissed.has([a.id, b.id].sort().join('|'))) continue;
       const { score, reasons } = similarity(a, b, basename);
       if (score >= 0.5) {
-        const [small, big] = a.aggregate.total_sessions <= b.aggregate.total_sessions ? [a, b] : [b, a];
-        small.suggested_merges.push({ project_id: big.id, project_name: big.name, score: Math.round(score * 100) / 100, reasons });
+        const [small, big] =
+          a.aggregate.total_sessions <= b.aggregate.total_sessions ? [a, b] : [b, a];
+        small.suggested_merges.push({
+          project_id: big.id,
+          project_name: big.name,
+          score: Math.round(score * 100) / 100,
+          reasons,
+        });
       }
     }
   }
@@ -522,7 +583,9 @@ function similarity(a, b, basename = crossPlatformBasename) {
   const reasons = [];
   const hintOverlap = jaccard(hintTokens(a._hints), hintTokens(b._hints));
   const techOverlap = weightedTechJaccard(a._techWeights, b._techWeights);
-  const industryMatch = a.aggregate.industries.some((x) => b.aggregate.industries.includes(x)) ? 1 : 0;
+  const industryMatch = a.aggregate.industries.some((x) => b.aggregate.industries.includes(x))
+    ? 1
+    : 0;
 
   // There is deliberately no same-origin term here any more. A shared origin
   // used to be the strongest signal — enough on its own to cross the threshold
@@ -531,16 +594,19 @@ function similarity(a, b, basename = crossPlatformBasename) {
   // away from their repo. Suggesting they undo that is not help.
   const pathKinds = new Set(['git_root', 'cwd']);
   const basenameMatch =
-    pathKinds.has(a.key.kind) && pathKinds.has(b.key.kind) && basename(a.key.value) === basename(b.key.value) ? 1 : 0;
+    pathKinds.has(a.key.kind) &&
+    pathKinds.has(b.key.kind) &&
+    basename(a.key.value) === basename(b.key.value)
+      ? 1
+      : 0;
 
-  let temporal = 0;
   const aLast = new Date(a.aggregate.last_seen || 0).getTime();
   const bFirst = new Date(b.aggregate.first_seen || 0).getTime();
   const bLast = new Date(b.aggregate.last_seen || 0).getTime();
   const aFirst = new Date(a.aggregate.first_seen || 0).getTime();
   const gapMs = Math.max(0, Math.max(aFirst, bFirst) - Math.min(aLast, bLast));
   const gapHours = gapMs / 3600000;
-  temporal = Math.exp(-gapHours / 24);
+  const temporal = Math.exp(-gapHours / 24);
 
   let continuation = 0;
   if (hintOverlap > 0) {
@@ -551,7 +617,12 @@ function similarity(a, b, basename = crossPlatformBasename) {
       const xLast = new Date(x.aggregate.last_seen || 0).getTime();
       for (const s of y._states) {
         const cls = s.classification;
-        if (cls && cls.continuation && new Date(s.created_at).getTime() - xLast < 48 * 3600000 && new Date(s.created_at).getTime() > xLast) {
+        if (
+          cls &&
+          cls.continuation &&
+          new Date(s.created_at).getTime() - xLast < 48 * 3600000 &&
+          new Date(s.created_at).getTime() > xLast
+        ) {
           continuation = 1;
         }
       }

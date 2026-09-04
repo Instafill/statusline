@@ -34,7 +34,10 @@ function classificationOutlook(s, cfg, sched) {
         : { kind: 'waiting_turn' };
     }
     if (authPaused) return { kind: 'paused_auth' };
-    return { kind: s.classification_state === 'stale' ? 'recheck' : 'idle', due_at: dueAt(s.last_event_at) };
+    return {
+      kind: s.classification_state === 'stale' ? 'recheck' : 'idle',
+      due_at: dueAt(s.last_event_at),
+    };
   }
   const meta = (s.classification && s.classification._meta) || {};
   if (s.classification_state === 'classified' && meta.classifier === 'heuristic') {

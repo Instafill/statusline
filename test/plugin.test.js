@@ -29,7 +29,12 @@ test('plugin hooks register exactly the entries the installer registers', () => 
       // A bare relative path would resolve against the user's cwd, not the
       // plugin, and the quotes matter: the cache path contains the user name.
       assert.strictEqual(h.command, PLUGIN_COMMAND, `${event}: command`);
-      fromPlugin.push([event, group.matcher === undefined ? null : group.matcher, !!h.async, h.timeout]);
+      fromPlugin.push([
+        event,
+        group.matcher === undefined ? null : group.matcher,
+        !!h.async,
+        h.timeout,
+      ]);
     }
   }
   const fromInstaller = ENTRIES.map((e) => [

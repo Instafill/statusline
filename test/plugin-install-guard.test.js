@@ -15,7 +15,6 @@ const assert = require('node:assert');
 const { execFileSync } = require('child_process');
 
 const REPO = path.join(__dirname, '..');
-const CLI = path.join(REPO, 'src', 'cli.js');
 
 // isPluginInstall() keys on the agent root's path shape, so a copy of the CLI
 // under a plugin-cache-shaped directory exercises the real predicate.
@@ -39,7 +38,19 @@ function run(root, ...args) {
 test('isPluginInstall recognizes a plugin-cache root and not a clone', () => {
   const { isPluginInstall } = require('../src/agent-root');
   assert.strictEqual(
-    isPluginInstall(path.join('C:', 'Users', 'x', '.claude', 'plugins', 'cache', 'statusline', 'statusline', '0.3.0')),
+    isPluginInstall(
+      path.join(
+        'C:',
+        'Users',
+        'x',
+        '.claude',
+        'plugins',
+        'cache',
+        'statusline',
+        'statusline',
+        '0.3.0'
+      )
+    ),
     true
   );
   assert.strictEqual(isPluginInstall(path.join('C:', 'work', 'statusline', 'agent')), false);
@@ -54,7 +65,11 @@ test('install from a plugin root refuses and writes no settings.json entries', (
   const before = fs.existsSync(settings) ? fs.readFileSync(settings, 'utf8') : null;
   run(root, 'install'); // idempotent refusal, still no writes
   const after = fs.existsSync(settings) ? fs.readFileSync(settings, 'utf8') : null;
-  assert.strictEqual(after, before, 'the real settings.json must not be touched by a refused install');
+  assert.strictEqual(
+    after,
+    before,
+    'the real settings.json must not be touched by a refused install'
+  );
 });
 
 test('status from a plugin root reports the plugin shape, never "re-run install"', () => {

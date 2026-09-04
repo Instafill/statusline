@@ -83,7 +83,13 @@ function mergeEvidence(state, technologies) {
   for (const e of evidence) {
     if (!e.mcpName || matchedTokens.has(e.token)) continue;
     if (out.some((t) => (t.canonicals || [t.canonical]).includes(e.token))) continue;
-    out.push({ name: e.mcpName, canonical: e.token, evidence: 'hands_on', basis: [e.source], verified: true });
+    out.push({
+      name: e.mcpName,
+      canonical: e.token,
+      evidence: 'hands_on',
+      basis: [e.source],
+      verified: true,
+    });
     matchedTokens.add(e.token);
   }
   return out;
@@ -96,7 +102,10 @@ function deriveTechnologies(state) {
   const cls = state.classification;
   if (!cls) return;
   if (!Array.isArray(cls.technologies_raw)) {
-    cls.technologies_raw = (cls.technologies || []).map((t) => ({ name: t.name, evidence: t.evidence }));
+    cls.technologies_raw = (cls.technologies || []).map((t) => ({
+      name: t.name,
+      evidence: t.evidence,
+    }));
   }
   cls.technologies = mergeEvidence(state, cls.technologies_raw);
 }
@@ -137,7 +146,11 @@ function deriveBusinessCapabilities(state) {
   // was never asked, so nothing may be fabricated for them.
   if (!Array.isArray(cls.business_capabilities_raw)) cls.business_capabilities_raw = [];
   const dropped = [];
-  cls.business_capabilities = resolveCapabilities(cls.business_capabilities_raw, (state.counts || {}).turns || 0, dropped);
+  cls.business_capabilities = resolveCapabilities(
+    cls.business_capabilities_raw,
+    (state.counts || {}).turns || 0,
+    dropped
+  );
   // DERIVED like the list itself: recomputed on every fold, so adding the
   // missing catalog entry later empties this and fills business_capabilities.
   cls.business_capabilities_dropped = dropped;

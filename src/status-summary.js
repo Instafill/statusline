@@ -66,7 +66,8 @@ function read(staleAfterMs = 90000) {
   const s = readJson(paths.summary, null);
   if (!s || !s.updated_at) return { running: false, reason: 'no summary' };
   const age = Date.now() - Date.parse(s.updated_at);
-  if (!(age >= 0) || age > staleAfterMs) return { running: false, reason: 'stale', age_ms: age, summary: s };
+  if (!(age >= 0) || age > staleAfterMs)
+    return { running: false, reason: 'stale', age_ms: age, summary: s };
   return { running: true, age_ms: age, summary: s };
 }
 

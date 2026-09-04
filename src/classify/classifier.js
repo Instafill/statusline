@@ -16,7 +16,12 @@ const ADAPTERS = {
 // Deterministic evidence lives in src/evidence.js (tables in
 // src/tech-normalize.js, server-overlaid via src/team-config.js); re-exported
 // here so inherit.js/heuristic.js and existing tests keep their import site.
-const { collectToolEvidence, matchesToken, mergeEvidence, resolveCapabilities } = require('../evidence');
+const {
+  collectToolEvidence,
+  matchesToken,
+  mergeEvidence,
+  resolveCapabilities,
+} = require('../evidence');
 const teamConfig = require('../team-config');
 const caps = require('../capabilities');
 
@@ -43,7 +48,8 @@ function applyZeroTurnCaps(state, value) {
 async function classifySession(state, digestText, ctx = {}) {
   const cfg = config.load().classifier;
   const makeAdapter = ADAPTERS[cfg.kind];
-  if (!makeAdapter) return { ok: false, outcome: 'config_error', error: `unknown classifier kind "${cfg.kind}"` };
+  if (!makeAdapter)
+    return { ok: false, outcome: 'config_error', error: `unknown classifier kind "${cfg.kind}"` };
   const adapter = makeAdapter();
 
   let corrective = null;
@@ -60,7 +66,9 @@ async function classifySession(state, digestText, ctx = {}) {
   for (let attemptNo = 1; attemptNo <= 1 + cfg.max_retries; attemptNo++) {
     const prompt = buildPrompt(digestText, corrective, catalogEntries);
     const t0 = Date.now();
-    log.info(`classifier egress: session ${state.session_id} attempt ${attemptNo} → ${adapter.kind} (${cfg.model}), ${digestText.length} chars`);
+    log.info(
+      `classifier egress: session ${state.session_id} attempt ${attemptNo} → ${adapter.kind} (${cfg.model}), ${digestText.length} chars`
+    );
     const res = await adapter.attempt(prompt, cfg);
     const duration = Date.now() - t0;
     if (res.cost_usd != null) {
@@ -85,7 +93,10 @@ async function classifySession(state, digestText, ctx = {}) {
           technologies_raw: raw,
           technologies: mergeEvidence(state, raw),
           business_capabilities_raw: v.value.business_capabilities,
-          business_capabilities: resolveCapabilities(v.value.business_capabilities, (state.counts || {}).turns || 0),
+          business_capabilities: resolveCapabilities(
+            v.value.business_capabilities,
+            (state.counts || {}).turns || 0
+          ),
         };
         const capped = applyZeroTurnCaps(state, value);
         classification = {
@@ -149,10 +160,24 @@ async function classifySession(state, digestText, ctx = {}) {
       digest_sha256: ctx.digest_sha256,
       reason: lastOutcome,
     });
-    log.warn(`classifier unreachable (${lastOutcome}) — heuristic fallback for session ${state.session_id}`);
-    return { ok: true, classification, degraded: true, outcome: lastOutcome, error: lastError || lastOutcome };
+    log.warn(
+      `classifier unreachable (${lastOutcome}) — heuristic fallback for session ${state.session_id}`
+    );
+    return {
+      ok: true,
+      classification,
+      degraded: true,
+      outcome: lastOutcome,
+      error: lastError || lastOutcome,
+    };
   }
   return { ok: false, outcome: lastOutcome, error: lastError || lastOutcome };
 }
 
-module.exports = { classifySession, mergeEvidence, collectToolEvidence, matchesToken, applyZeroTurnCaps };
+module.exports = {
+  classifySession,
+  mergeEvidence,
+  collectToolEvidence,
+  matchesToken,
+  applyZeroTurnCaps,
+};

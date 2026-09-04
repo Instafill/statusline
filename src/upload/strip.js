@@ -25,7 +25,8 @@ function stripLocalOnlySemantics(value) {
   if (!value || typeof value !== 'object') return value;
   const out = {};
   for (const [key, child] of Object.entries(value)) {
-    if (isLocalOnlyKey(key) || key === '__proto__' || key === 'prototype' || key === 'constructor') continue;
+    if (isLocalOnlyKey(key) || key === '__proto__' || key === 'prototype' || key === 'constructor')
+      continue;
     out[key] = stripLocalOnlySemantics(child);
   }
   return out;
@@ -41,7 +42,8 @@ function stripContent(doc) {
   }
   if (doc.tools) {
     out.tools = { ...stripLocalOnlySemantics(doc.tools), bash_commands: [] };
-    if (doc.tools.web) out.tools.web = { ...stripLocalOnlySemantics(doc.tools.web), search_queries: [] };
+    if (doc.tools.web)
+      out.tools.web = { ...stripLocalOnlySemantics(doc.tools.web), search_queries: [] };
   }
   // Rich semantic experiments stay local until their independent privacy and
   // quality gates pass; production business_capabilities* remain untouched.

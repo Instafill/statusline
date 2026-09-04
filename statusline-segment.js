@@ -26,7 +26,13 @@ const path = require('path');
 
 const STALE_AFTER_MS = 90000;
 
-const C = { reset: '\x1b[0m', dim: '\x1b[2m', green: '\x1b[32m', yellow: '\x1b[33m', red: '\x1b[31m' };
+const C = {
+  reset: '\x1b[0m',
+  dim: '\x1b[2m',
+  green: '\x1b[32m',
+  yellow: '\x1b[33m',
+  red: '\x1b[31m',
+};
 
 function homeDir() {
   return process.env.STATUSLINE_HOME || path.join(os.homedir(), '.statusline');
@@ -47,7 +53,9 @@ function readSummary() {
 // session_id comes from the hook payload, so it is sanitized the same way the
 // watcher sanitizes it before being used as a filename.
 function safeSessionId(sid) {
-  return String(sid).replace(/[^A-Za-z0-9_.-]/g, '_').slice(0, 128);
+  return String(sid)
+    .replace(/[^A-Za-z0-9_.-]/g, '_')
+    .slice(0, 128);
 }
 
 function readSession(sessionId) {
@@ -97,7 +105,9 @@ function render({ color = false, sessionId = null } = {}) {
   let head = C.green;
   switch (session.classification_state) {
     case 'classified':
-      bits = session.classification ? classificationBits(session.classification, paint) : ['classified'];
+      bits = session.classification
+        ? classificationBits(session.classification, paint)
+        : ['classified'];
       break;
     case 'pending':
       bits = [paint(C.dim, 'classifying…')];
@@ -126,7 +136,9 @@ if (require.main === module) {
     const i = process.argv.indexOf('--session');
     const sessionId = i !== -1 ? process.argv[i + 1] : null;
     if (process.argv.includes('--json')) {
-      process.stdout.write(JSON.stringify({ watcher: readSummary(), session: readSession(sessionId) }, null, 2) + '\n');
+      process.stdout.write(
+        JSON.stringify({ watcher: readSummary(), session: readSession(sessionId) }, null, 2) + '\n'
+      );
     } else {
       process.stdout.write(render({ color: process.argv.includes('--color'), sessionId }));
     }

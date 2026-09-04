@@ -15,7 +15,9 @@ function sessionCell(e) {
     return `<a href="/session/${esc(e.session_id)}"><code>${esc(String(e.session_id).slice(0, 8))}</code></a>`;
   }
   if (e.kind === 'upload') {
-    return e.session_count > 0 ? `${e.session_count} session${e.session_count === 1 ? '' : 's'}` : '<span class="dim">heartbeat</span>';
+    return e.session_count > 0
+      ? `${e.session_count} session${e.session_count === 1 ? '' : 's'}`
+      : '<span class="dim">heartbeat</span>';
   }
   return '<span class="dim">—</span>';
 }
@@ -64,7 +66,9 @@ function totals(list) {
     [
       'Total cost',
       cost(priced.reduce((a, e) => a + e.cost_usd, 0)) +
-        (unpriced ? `<span class="dim small"> · ${unpriced} older call${unpriced === 1 ? '' : 's'} without cost data</span>` : ''),
+        (unpriced
+          ? `<span class="dim small"> · ${unpriced} older call${unpriced === 1 ? '' : 's'} without cost data</span>`
+          : ''),
     ],
     ['Tokens in', tokens(sum('input_tokens'))],
     ['Tokens out', tokens(sum('output_tokens'))],

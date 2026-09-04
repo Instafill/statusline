@@ -18,13 +18,17 @@ function capabilityChips(aggregate) {
       );
     }
   }
-  for (const l of aggregate.tasks_recent || []) chips.push(`<span class="chip task" title="${esc(when(l.at))}">${esc(l.text)}</span>`);
-  for (const ind of aggregate.industries || []) chips.push(`<span class="chip industry">${esc(ind)}</span>`);
+  for (const l of aggregate.tasks_recent || [])
+    chips.push(`<span class="chip task" title="${esc(when(l.at))}">${esc(l.text)}</span>`);
+  for (const ind of aggregate.industries || [])
+    chips.push(`<span class="chip industry">${esc(ind)}</span>`);
   return chips.join('') || '<span class="dim">none yet</span>';
 }
 
 function sessionLine(sid, s) {
-  const detail = s ? `${when(s.last_event_at)} — ${esc(s.classification ? s.classification.work_type : s.classification_state)}` : '';
+  const detail = s
+    ? `${when(s.last_event_at)} — ${esc(s.classification ? s.classification.work_type : s.classification_state)}`
+    : '';
   return `<div>· <a href="/session/${esc(sid)}"><code>${esc(sid.slice(0, 8))}</code></a>
     <span class="dim small">${detail}</span></div>`;
 }
@@ -41,7 +45,9 @@ function mergeSuggestions(p) {
 
 function projectCard(p, bySid) {
   const agg = p.aggregate;
-  const votes = Object.entries(agg.work_category_votes).map(([k, n]) => `${k}×${n}`).join(', ');
+  const votes = Object.entries(agg.work_category_votes)
+    .map(([k, n]) => `${k}×${n}`)
+    .join(', ');
   const engBadge = p.engagement_id
     ? ` <span class="chip industry" title="declared engagement ${esc(p.engagement_id)}">${esc(p.engagement_kind || 'engagement')}</span>`
     : '';
@@ -60,7 +66,7 @@ function projectCard(p, bySid) {
 
 // Singletons (home-dir / no-cwd sessions) are not projects: they render as one
 // collapsed miscellaneous list so counts and capabilities stay honest.
-function miscCard(singles, bySid) {
+function miscCard(singles) {
   const lines = singles
     .map((p) => {
       const sid = p.session_ids[0];
@@ -78,13 +84,15 @@ function miscCard(singles, bySid) {
 export async function renderProjects(el) {
   const [data, sessions] = await Promise.all([api('/api/projects'), api('/api/sessions')]);
   if (!data.projects.length) {
-    el.innerHTML = '<div class="empty">No projects yet — they appear once sessions are observed.</div>';
+    el.innerHTML =
+      '<div class="empty">No projects yet — they appear once sessions are observed.</div>';
     return;
   }
   const bySid = new Map(sessions.map((s) => [s.session_id, s]));
   const real = data.projects.filter((p) => !p.singleton);
   const singles = data.projects.filter((p) => p.singleton);
-  el.innerHTML = real.map((p) => projectCard(p, bySid)).join('') + (singles.length ? miscCard(singles, bySid) : '');
+  el.innerHTML =
+    real.map((p) => projectCard(p, bySid)).join('') + (singles.length ? miscCard(singles) : '');
 
   on('[data-rename]', 'click', async (b) => {
     const name = prompt('Project name:', b.dataset.name);
@@ -97,7 +105,9 @@ export async function renderProjects(el) {
     render();
   });
   on('[data-dismiss-a]', 'click', async (b) => {
-    await api(`/api/projects/${b.dataset.dismissA}/dismiss-merge`, 'POST', { other: b.dataset.dismissB });
+    await api(`/api/projects/${b.dataset.dismissA}/dismiss-merge`, 'POST', {
+      other: b.dataset.dismissB,
+    });
     render();
   });
 }

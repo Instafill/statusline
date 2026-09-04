@@ -33,10 +33,14 @@ function windowsEnable(target) {
   const command = `"${nodeExe()}" "${cliScript}" start`;
   const res = run('schtasks', [
     '/Create',
-    '/TN', target.name,
-    '/TR', command,
-    '/SC', 'ONLOGON',
-    '/RL', 'LIMITED',
+    '/TN',
+    target.name,
+    '/TR',
+    command,
+    '/SC',
+    'ONLOGON',
+    '/RL',
+    'LIMITED',
     '/F', // replace an existing definition
   ]);
   if (res.ok) return { mechanism: 'Scheduled Task', id: target.name, command };
@@ -52,7 +56,10 @@ function windowsEnable(target) {
       note: `Scheduled Task creation was denied (${res.out.replace(/\s+/g, ' ').trim()}), used the Startup folder instead`,
     };
   } catch (e) {
-    throw new Error(`schtasks failed (${res.out}) and the Startup folder fallback also failed: ${e.message}`);
+    throw new Error(
+      `schtasks failed (${res.out}) and the Startup folder fallback also failed: ${e.message}`,
+      { cause: e }
+    );
   }
 }
 
@@ -83,7 +90,7 @@ function windowsDisable(target) {
       removed = true;
     }
   } catch (e) {
-    throw new Error(`could not remove ${target.startupFile}: ${e.message}`);
+    throw new Error(`could not remove ${target.startupFile}: ${e.message}`, { cause: e });
   }
   return { removed };
 }
@@ -140,7 +147,8 @@ function macDisable(target) {
 }
 
 function macStatus(target) {
-  if (!fs.existsSync(target.file)) return { enabled: false, mechanism: 'launchd agent', id: target.label };
+  if (!fs.existsSync(target.file))
+    return { enabled: false, mechanism: 'launchd agent', id: target.label };
   const res = run('launchctl', ['list', target.label]);
   return { enabled: res.ok, mechanism: 'launchd agent', id: target.label };
 }
@@ -169,7 +177,12 @@ function disable() {
 function status() {
   if (isWindows) return windowsStatus(autostartTarget());
   if (isMac) return macStatus(autostartTarget());
-  return { enabled: false, mechanism: 'unsupported platform', id: process.platform, unsupported: true };
+  return {
+    enabled: false,
+    mechanism: 'unsupported platform',
+    id: process.platform,
+    unsupported: true,
+  };
 }
 
 module.exports = { enable, disable, status };

@@ -54,7 +54,9 @@ export async function render() {
     return;
   }
   current = { name, arg };
-  document.querySelectorAll('[data-tab]').forEach((a) => a.classList.toggle('active', a.dataset.tab === view.navTab));
+  document
+    .querySelectorAll('[data-tab]')
+    .forEach((a) => a.classList.toggle('active', a.dataset.tab === view.navTab));
   try {
     await view.render(mount, arg);
   } catch (e) {
@@ -66,12 +68,22 @@ export async function render() {
 // else (new tab, download, external host, #fragment) is left to the browser.
 function interceptLinks() {
   document.addEventListener('click', (ev) => {
-    if (ev.defaultPrevented || ev.button !== 0 || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
+    if (
+      ev.defaultPrevented ||
+      ev.button !== 0 ||
+      ev.metaKey ||
+      ev.ctrlKey ||
+      ev.shiftKey ||
+      ev.altKey
+    )
+      return;
     const a = ev.target.closest('a');
-    if (!a || a.target === '_blank' || a.hasAttribute('download') || a.origin !== location.origin) return;
+    if (!a || a.target === '_blank' || a.hasAttribute('download') || a.origin !== location.origin)
+      return;
     if (!views.has(parse(a.pathname).name)) return; // /login, /join, static files
     ev.preventDefault();
-    if (a.pathname + a.search !== location.pathname + location.search) navigate(a.pathname + a.search);
+    if (a.pathname + a.search !== location.pathname + location.search)
+      navigate(a.pathname + a.search);
   });
 }
 
