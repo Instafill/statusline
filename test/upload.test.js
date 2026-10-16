@@ -309,3 +309,31 @@ test('ingest ACK delivers validated normalization tables; junk is dropped, versi
   assert.strictEqual(notified, 1);
   respondBody = null;
 });
+
+test('a moved deployment named in the ACK becomes the upload endpoint (plain https only)', async () => {
+  const original = config.load(true).upload.endpoint;
+  const u = makeUploader();
+  try {
+    // Never followed: an http downgrade, credentials, a query, non-URLs.
+    for (const endpoint of [
+      'http://moved.example.test',
+      'https://user:pw@moved.example.test',
+      'https://moved.example.test/?next=1',
+      'not a url',
+      42,
+    ]) {
+      respondBody = { ok: true, endpoint };
+      await u.heartbeat();
+      assert.strictEqual(config.load(true).upload.endpoint, original, String(endpoint));
+    }
+    // A plain https origin is adopted, token kept. No request goes there here.
+    respondBody = { ok: true, endpoint: 'https://moved.example.test/' };
+    await u.heartbeat();
+    const after = config.load(true).upload;
+    assert.strictEqual(after.endpoint, 'https://moved.example.test');
+    assert.strictEqual(after.token, 'team-secret');
+  } finally {
+    respondBody = null;
+    config.save({ upload: { endpoint: original } });
+  }
+});

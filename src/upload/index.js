@@ -15,7 +15,7 @@ const { liveness, classificationOutlook } = require('../session-view');
 const { readJson, writeJsonAtomic } = require('../util/jsonfile');
 const { machineIdentity } = require('./identity');
 const skills = require('../skill-status');
-const { ingestUrl, endpointHost } = require('./endpoints');
+const { baseOf, ingestUrl, endpointHost } = require('./endpoints');
 const teamConfig = require('../team-config');
 const log = require('../util/log');
 
@@ -146,7 +146,7 @@ function createUploader({ getSchedulerStats, startedAt, onTeamConfig }) {
       entry.duration_ms = Date.now() - t0;
       entry.outcome = res.ok ? 'ok' : `http_${res.status}`;
       egress.record(entry);
-      if (res.ok) await maybeStoreTeamConfig(res);
+      if (res.ok) await applyAck(res, cfg);
       return res.ok;
     } catch (e) {
       entry.duration_ms = Date.now() - t0;
@@ -157,25 +157,51 @@ function createUploader({ getSchedulerStats, startedAt, onTeamConfig }) {
     }
   }
 
-  // The ingest ACK is the ONLY channel that can deliver updated normalization
-  // tables (thin client: tables are data, distributed on the connection we
-  // already make — no extra network calls, nothing on disabled installs).
-  // teamConfig.store re-validates; a malformed payload is dropped, never
-  // fails the upload.
-  async function maybeStoreTeamConfig(res) {
+  // The ingest ACK is the ONLY channel the server has back to this machine
+  // (thin client: no extra network calls, nothing on disabled installs). It can
+  // carry updated normalization tables and, when the team deployment has moved,
+  // its new address. A malformed ACK is ignored, never fails the upload.
+  async function applyAck(res, cfg) {
+    let ack;
     try {
-      const ack = await res.json();
-      if (!ack || typeof ack !== 'object' || !ack.team_config) return;
-      const { changed, errors } = teamConfig.store(ack.team_config);
-      if (errors.length)
-        log.warn(`team config from server partially invalid: ${errors.slice(0, 3).join('; ')}`);
-      if (changed) {
-        log.info(`team normalization tables updated to v${teamConfig.currentVersion()}`);
-        if (onTeamConfig) onTeamConfig();
-      }
+      ack = await res.json();
     } catch (e) {
-      /* non-JSON or unreadable ACK body — nothing to apply */
+      return; // non-JSON or unreadable ACK body — nothing to apply
     }
+    if (!ack || typeof ack !== 'object') return;
+    if (ack.team_config) storeTeamConfig(ack.team_config);
+    if (ack.endpoint) followEndpoint(ack.endpoint, cfg);
+  }
+
+  // teamConfig.store re-validates; a malformed payload is dropped.
+  function storeTeamConfig(payload) {
+    const { changed, errors } = teamConfig.store(payload);
+    if (errors.length)
+      log.warn(`team config from server partially invalid: ${errors.slice(0, 3).join('; ')}`);
+    if (changed) {
+      log.info(`team normalization tables updated to v${teamConfig.currentVersion()}`);
+      if (onTeamConfig) onTeamConfig();
+    }
+  }
+
+  // A deployment that moved names its new origin in `endpoint`; upload.endpoint
+  // is rewritten so the next batch goes there with the same token (same
+  // deployment, new address). Only a plain https origin is followed: never a
+  // downgrade to http, never a URL carrying credentials, a query or a fragment.
+  function followEndpoint(value, cfg) {
+    if (typeof value !== 'string') return;
+    let next;
+    try {
+      next = new URL(value);
+    } catch (e) {
+      return;
+    }
+    if (next.protocol !== 'https:' || next.username || next.password || next.search || next.hash)
+      return;
+    const target = baseOf(next.toString());
+    if (target === baseOf(cfg.upload.endpoint)) return;
+    config.save({ upload: { endpoint: target } });
+    log.info(`team deployment moved: uploads now go to ${next.host}`);
   }
 
   function onFailure() {
